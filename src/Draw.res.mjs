@@ -127,40 +127,55 @@ function updateCanvas(canvas, ctx) {
   var aSeries = random(0, 1) > 0.1;
   var bSeries = random(0, 1) > 0.5;
   var cSeries = random(0, 1) > 0.2;
-  if (aSeries) {
-    Core__Array.make(randomInt(1, 3), false).forEach(function (param) {
-          makeSplats([
-                10,
-                500
-              ], [
-                0,
-                1000
-              ], makeRadiusBase(), sizeNumScaler);
-        });
-  }
-  if (aSeries) {
-    Core__Array.make(randomInt(1, 5), false).forEach(function (param) {
-          makeSplats([
-                100,
-                200
-              ], [
-                0,
-                100
-              ], makeRadiusBase(), sizeNumScaler);
-        });
-  }
-  if (cSeries || !aSeries && !bSeries) {
-    Core__Array.make(randomInt(1, 3), false).forEach(function (param) {
-          makeSplats([
-                10,
-                20
-              ], [
-                0,
-                100
-              ], makeRadiusBase(), sizeNumScaler);
-        });
-  }
-  
+  Core__Array.toShuffled([
+          (function () {
+              if (aSeries) {
+                Core__Array.make(randomInt(1, 3), false).forEach(function (param) {
+                      makeSplats([
+                            10,
+                            500
+                          ], [
+                            0,
+                            1000
+                          ], makeRadiusBase(), sizeNumScaler);
+                    });
+                return ;
+              }
+              
+            }),
+          (function () {
+              if (bSeries) {
+                Core__Array.make(randomInt(1, 5), false).forEach(function (param) {
+                      makeSplats([
+                            100,
+                            200
+                          ], [
+                            0,
+                            100
+                          ], makeRadiusBase(), sizeNumScaler);
+                    });
+                return ;
+              }
+              
+            }),
+          (function () {
+              if (cSeries || !aSeries && !bSeries) {
+                Core__Array.make(randomInt(1, 3), false).forEach(function (param) {
+                      makeSplats([
+                            10,
+                            20
+                          ], [
+                            0,
+                            100
+                          ], makeRadiusBase(), sizeNumScaler);
+                    });
+                return ;
+              }
+              
+            })
+        ]).forEach(function (v) {
+        v();
+      });
 }
 
 export {

@@ -19,7 +19,6 @@ function App$CanvasArea(props) {
             canvasDom.height = 300;
             Draw.updateCanvas(canvasDom, context);
             isLoaded();
-            console.log("boop");
           }
         }), [canvasRef.current]);
   return JsxRuntime.jsx("div", {
@@ -40,11 +39,11 @@ function App(props) {
       });
   var setMounted = match$1[1];
   var match$2 = React.useState(function () {
-        return Core__Array.make(12, false);
+        return Core__Array.make(40, false);
       });
   var setLoaded = match$2[1];
   React.useEffect((function () {
-          var canvases = Core__Array.make(12, false).map(function (param, i) {
+          var canvases = Core__Array.make(40, false).map(function (param, i) {
                 return JsxRuntime.jsx(App$CanvasArea, {
                             isLoaded: (function () {
                                 setLoaded(function (a) {

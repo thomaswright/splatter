@@ -31,7 +31,6 @@ module CanvasArea = {
 
           Draw.updateCanvas(canvas, context)
           isLoaded()
-          Console.log("boop")
         }
       | Null | Undefined => ()
       }
@@ -48,7 +47,7 @@ module CanvasArea = {
   }
 }
 
-let numSplatters = 12
+let numSplatters = 40
 @react.component
 let make = () => {
   let (canvases, setCanvases) = React.useState(_ => [])

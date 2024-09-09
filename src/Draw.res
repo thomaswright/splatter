@@ -163,21 +163,31 @@ let updateCanvas = (canvas, ctx) => {
   let aSeries = random(0., 1.) > 0.1
   let bSeries = random(0., 1.) > 0.5
   let cSeries = random(0., 1.) > 0.2
-  aSeries
-    ? Array.make(~length=randomInt(1, 3), false)->Array.forEach(_ => {
-        makeSplats((10, 500), (0, 1000), makeRadiusBase(), sizeNumScaler)
-      })
-    : ()
-  aSeries
-    ? Array.make(~length=randomInt(1, 5), false)->Array.forEach(_ => {
-        makeSplats((100, 200), (0, 100), makeRadiusBase(), sizeNumScaler)
-      })
-    : ()
-  cSeries || (!aSeries && !bSeries)
-    ? Array.make(~length=randomInt(1, 3), false)->Array.forEach(_ => {
-        makeSplats((10, 20), (0, 100), makeRadiusBase(), sizeNumScaler)
-      })
-    : ()
+  [
+    () => {
+      aSeries
+        ? Array.make(~length=randomInt(1, 3), false)->Array.forEach(_ => {
+            makeSplats((10, 500), (0, 1000), makeRadiusBase(), sizeNumScaler)
+          })
+        : ()
+    },
+    () => {
+      bSeries
+        ? Array.make(~length=randomInt(1, 5), false)->Array.forEach(_ => {
+            makeSplats((100, 200), (0, 100), makeRadiusBase(), sizeNumScaler)
+          })
+        : ()
+    },
+    () => {
+      cSeries || (!aSeries && !bSeries)
+        ? Array.make(~length=randomInt(1, 3), false)->Array.forEach(_ => {
+            makeSplats((10, 20), (0, 100), makeRadiusBase(), sizeNumScaler)
+          })
+        : ()
+    },
+  ]
+  ->Array.toShuffled
+  ->Array.forEach(v => v())
 
   ()
 }
