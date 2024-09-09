@@ -73,29 +73,38 @@ let makeRandomWindowInt = (a, b) => {
   () => randomInt(start, end)
 }
 
+let makeRandomWindow = (a, b) => {
+  let start = random(a, b)
+  let end = random(start, b)
+  () => random(start, end)
+}
+
 let updateCanvas = (canvas, ctx) => {
   let xMax = canvas->Canvas.getWidth
   let yMax = canvas->Canvas.getHeight
   let size = xMax
 
-  let makeSplats = () => {
-    let numSplats = randomInt(10, 500)
+  let makeSplats = ((minSplats, maxSplats), (minDrops, maxDrops), radiusBase, sizeNumScaler) => {
+    let numSplats = randomInt(minSplats, maxSplats)
     let startHue = random(0., 360.)
     let endHue = random(startHue, 360.)
     let getHue = () => randomBySample(Jstat.betaSample(1.4, 5.), startHue, endHue)
+    // let getValue = makeRandomWindow(0.0, 1.0)
+    let valueFloor = random(0.2, 0.7)
+    // let saturation = random(0.8, 1.0)
 
     let middleAngle = random(0., 1.0)
     let angleWidth = random(0., 0.2)
     let startAngle = middleAngle -. angleWidth
     let endAngle = middleAngle +. angleWidth
 
-    let numDropWindow = makeRandomWindowInt(0, 1000)
+    let numDropWindow = makeRandomWindowInt(minDrops, maxDrops)
 
     let getXOffset = random(0., 1.) < 0.4 ? makeRandomWindowInt(0, xMax) : () => randomInt(0, xMax)
     let getYOffset = random(0., 1.) < 0.4 ? makeRandomWindowInt(0, yMax) : () => randomInt(0, yMax)
 
     for _ in 0 to numSplats {
-      let color = Texel.convert((getHue(), 1.0, random(0.5, 1.0)), Texel.okhsv, Texel.srgb)
+      let color = Texel.convert((getHue(), 1.0, random(valueFloor, 1.0)), Texel.okhsv, Texel.srgb)
       let angle = random(startAngle, endAngle) *. 2. *. Js.Math._PI
       let xAlpha = random(2.0, 3.0)
       let yStd = random(0.1, 0.4)
@@ -105,7 +114,7 @@ let updateCanvas = (canvas, ctx) => {
 
       let xSizeScaler = random(0.0, 2.0)
       let ySizeScaler = random(0.0, 0.2)
-      let numDrops = numDropWindow()
+      let numDrops = (numDropWindow()->Int.toFloat *. sizeNumScaler)->Float.toInt
 
       for _ in 0 to numDrops {
         let originalx = Jstat.betaSample(xAlpha, 5.) *. size->Int.toFloat *. xSizeScaler
@@ -113,7 +122,7 @@ let updateCanvas = (canvas, ctx) => {
 
         let (x, y) = rotatePoint(originalx, originaly, angle)
 
-        let radius = (Jstat.betaSample(1.4, 5.) *. 4.)->Float.toInt
+        let radius = (Jstat.betaSample(1.4, 5.) *. radiusBase)->Float.toInt
 
         ctx->Canvas.setFillStyle(Texel.rgbToHex(color))
         ctx->Canvas.beginPath
@@ -129,14 +138,40 @@ let updateCanvas = (canvas, ctx) => {
     }
   }
 
-  let bgColor = Texel.convert((random(0., 360.), 1.0, random(0.0, 1.0)), Texel.okhsl, Texel.srgb)
+  let getBgL = () => {
+    switch Math.random() {
+    | x if x < 0.4 => random(0.0, 0.2)
+    | x if x < 0.6 => random(0.2, 0.8)
+    | _ => random(0.8, 1.0)
+    }
+  }
+
+  let bgColor = Texel.convert((random(0., 360.), 1.0, getBgL()), Texel.okhsl, Texel.srgb)
 
   ctx->Canvas.setFillStyle(Texel.rgbToHex(bgColor))
   ctx->Canvas.fillRect(~x=0, ~y=0, ~h=yMax, ~w=xMax)
 
-  for _ in 0 to randomInt(0, 3) {
-    makeSplats()
-  }
+  let dynamicRadiusBase = () => Jstat.betaSample(2.5, 17.) *. random(10., 100.)
+
+  let makeRadiusBase = Math.random() > 0.5 ? () => dynamicRadiusBase() : () => dynamicRadiusBase()
+
+  let sizeNumScaler = random(size->Int.toFloat /. 300. *. 0.5, size->Int.toFloat /. 300. *. 1.5)
+  Console.log(sizeNumScaler)
+  random(0., 1.) > 0.1
+    ? Array.make(~length=randomInt(1, 3), false)->Array.forEach(_ => {
+        makeSplats((10, 500), (0, 1000), makeRadiusBase(), sizeNumScaler)
+      })
+    : ()
+  random(0., 1.) > 0.5
+    ? Array.make(~length=randomInt(1, 5), false)->Array.forEach(_ => {
+        makeSplats((100, 200), (0, 100), makeRadiusBase(), sizeNumScaler)
+      })
+    : ()
+  random(0., 1.) > 0.2
+    ? Array.make(~length=randomInt(1, 3), false)->Array.forEach(_ => {
+        makeSplats((10, 20), (0, 100), makeRadiusBase(), sizeNumScaler)
+      })
+    : ()
 
   ()
 }
@@ -151,8 +186,8 @@ module CanvasArea = {
       | Value(canvasDom) => {
           let canvas = canvasDom->Obj.magic
           let context = canvas->Canvas.getContext("2d")
-          canvas->Canvas.setWidth(200)
-          canvas->Canvas.setHeight(200)
+          canvas->Canvas.setWidth(300)
+          canvas->Canvas.setHeight(300)
 
           updateCanvas(canvas, context)
         }
@@ -170,7 +205,7 @@ module CanvasArea = {
 @react.component
 let make = () => {
   <div className="p-6 bg-black min-h-screen">
-    <div className="flex flex-row flex-wrap gap-4">
+    <div className="flex flex-row flex-wrap gap-8">
       {Array.make(~length=12, false)
       ->Array.map(_ => {
         <CanvasArea />
