@@ -22,20 +22,66 @@ function random(a, b) {
   return Math.random() * (b - a) + a;
 }
 
-function randomBySample(sample, a, b) {
-  return sample * (b - a) + a;
-}
-
 function randomInt(a, b) {
   return Math.random() * (b - a) + a | 0;
+}
+
+function makeRandomWindowInt(a, b) {
+  var start = randomInt(a, b);
+  var end = randomInt(start, b);
+  return function () {
+    return randomInt(start, end);
+  };
 }
 
 function updateCanvas(canvas, ctx) {
   var xMax = canvas.width;
   var yMax = canvas.height;
-  var numSplats = randomInt(50, 500);
-  var startHue = random(0, 360);
-  var endHue = random(startHue, 360);
+  var makeSplats = function () {
+    var numSplats = randomInt(10, 500);
+    var startHue = random(0, 360);
+    var endHue = random(startHue, 360);
+    var getHue = function () {
+      var sample = Jstat.beta.sample(1.4, 5);
+      return sample * (endHue - startHue) + startHue;
+    };
+    var middleAngle = random(0, 1.0);
+    var angleWidth = random(0, 0.2);
+    var startAngle = middleAngle - angleWidth;
+    var endAngle = middleAngle + angleWidth;
+    var numDropWindow = makeRandomWindowInt(0, 1000);
+    var getXOffset = random(0, 1) < 0.4 ? makeRandomWindowInt(0, xMax) : (function () {
+          return randomInt(0, xMax);
+        });
+    var getYOffset = random(0, 1) < 0.4 ? makeRandomWindowInt(0, yMax) : (function () {
+          return randomInt(0, yMax);
+        });
+    for(var _for = 0; _for <= numSplats; ++_for){
+      var color = Color.convert([
+            getHue(),
+            1.0,
+            random(0.5, 1.0)
+          ], Color.OKHSV, Color.sRGB);
+      var angle = random(startAngle, endAngle) * 2 * Math.PI;
+      var xAlpha = random(2.0, 3.0);
+      var yStd = random(0.1, 0.4);
+      var xOffset = getXOffset();
+      var yOffset = getYOffset();
+      var xSizeScaler = random(0.0, 2.0);
+      var ySizeScaler = random(0.0, 0.2);
+      var numDrops = numDropWindow();
+      for(var _for$1 = 0; _for$1 <= numDrops; ++_for$1){
+        var originalx = Jstat.beta.sample(xAlpha, 5) * xMax * xSizeScaler;
+        var originaly = Jstat.normal.sample(0, yStd) * xMax * ySizeScaler;
+        var match = rotatePoint(originalx, originaly, angle);
+        var radius = Jstat.beta.sample(1.4, 5) * 4 | 0;
+        ctx.fillStyle = Color.RGBToHex(color);
+        ctx.beginPath();
+        ctx.arc((match[0] | 0) + xOffset | 0, (match[1] | 0) + yOffset | 0, radius, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+    }
+  };
   var bgColor = Color.convert([
         random(0, 360),
         1.0,
@@ -43,34 +89,8 @@ function updateCanvas(canvas, ctx) {
       ], Color.OKHSL, Color.sRGB);
   ctx.fillStyle = Color.RGBToHex(bgColor);
   ctx.fillRect(0, 0, xMax, yMax);
-  var middleAngle = random(0, 1.0);
-  var angleWidth = random(0, 0.05);
-  var startAngle = middleAngle - angleWidth;
-  var endAngle = middleAngle + angleWidth;
-  for(var _for = 0; _for <= numSplats; ++_for){
-    var color = Color.convert([
-          randomBySample(Jstat.beta.sample(1.4, 5), startHue, endHue),
-          1.0,
-          random(0.5, 1.0)
-        ], Color.OKHSV, Color.sRGB);
-    var angle = random(startAngle, endAngle) * 2 * Math.PI;
-    var xAlpha = random(2.0, 3.0);
-    var yStd = random(0.1, 0.4);
-    var xOffset = randomInt(0, xMax);
-    var yOffset = randomInt(0, yMax);
-    var xSizeScaler = random(0.0, 2.0);
-    var ySizeScaler = random(0.0, 0.2);
-    var numDrops = randomInt(500, 1000);
-    for(var _for$1 = 0; _for$1 <= numDrops; ++_for$1){
-      var originalx = Jstat.beta.sample(xAlpha, 5) * xMax * xSizeScaler;
-      var originaly = Jstat.normal.sample(0, yStd) * xMax * ySizeScaler;
-      var match = rotatePoint(originalx, originaly, angle);
-      var radius = Jstat.beta.sample(1.4, 5) * 4 | 0;
-      ctx.fillStyle = Color.RGBToHex(color);
-      ctx.beginPath();
-      ctx.arc((match[0] | 0) + xOffset | 0, (match[1] | 0) + yOffset | 0, radius, 0, 2 * Math.PI);
-      ctx.fill();
-    }
+  for(var _for = 0 ,_for_finish = randomInt(0, 3); _for <= _for_finish; ++_for){
+    makeSplats();
   }
 }
 

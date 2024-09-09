@@ -67,60 +67,75 @@ let randomInt = (a, b) => {
   (Math.random() *. (b->Int.toFloat -. a->Int.toFloat) +. a->Int.toFloat)->Float.toInt
 }
 
+let makeRandomWindowInt = (a, b) => {
+  let start = randomInt(a, b)
+  let end = randomInt(start, b)
+  () => randomInt(start, end)
+}
+
 let updateCanvas = (canvas, ctx) => {
   let xMax = canvas->Canvas.getWidth
   let yMax = canvas->Canvas.getHeight
   let size = xMax
-  let numSplats = randomInt(50, 500)
-  let startHue = random(0., 360.)
-  let endHue = random(startHue, 360.)
+
+  let makeSplats = () => {
+    let numSplats = randomInt(10, 500)
+    let startHue = random(0., 360.)
+    let endHue = random(startHue, 360.)
+    let getHue = () => randomBySample(Jstat.betaSample(1.4, 5.), startHue, endHue)
+
+    let middleAngle = random(0., 1.0)
+    let angleWidth = random(0., 0.2)
+    let startAngle = middleAngle -. angleWidth
+    let endAngle = middleAngle +. angleWidth
+
+    let numDropWindow = makeRandomWindowInt(0, 1000)
+
+    let getXOffset = random(0., 1.) < 0.4 ? makeRandomWindowInt(0, xMax) : () => randomInt(0, xMax)
+    let getYOffset = random(0., 1.) < 0.4 ? makeRandomWindowInt(0, yMax) : () => randomInt(0, yMax)
+
+    for _ in 0 to numSplats {
+      let color = Texel.convert((getHue(), 1.0, random(0.5, 1.0)), Texel.okhsv, Texel.srgb)
+      let angle = random(startAngle, endAngle) *. 2. *. Js.Math._PI
+      let xAlpha = random(2.0, 3.0)
+      let yStd = random(0.1, 0.4)
+
+      let xOffset = getXOffset()
+      let yOffset = getYOffset()
+
+      let xSizeScaler = random(0.0, 2.0)
+      let ySizeScaler = random(0.0, 0.2)
+      let numDrops = numDropWindow()
+
+      for _ in 0 to numDrops {
+        let originalx = Jstat.betaSample(xAlpha, 5.) *. size->Int.toFloat *. xSizeScaler
+        let originaly = Jstat.normalSample(0., yStd) *. size->Int.toFloat *. ySizeScaler
+
+        let (x, y) = rotatePoint(originalx, originaly, angle)
+
+        let radius = (Jstat.betaSample(1.4, 5.) *. 4.)->Float.toInt
+
+        ctx->Canvas.setFillStyle(Texel.rgbToHex(color))
+        ctx->Canvas.beginPath
+        ctx->Canvas.arc(
+          ~x=x->Float.toInt + xOffset,
+          ~y=y->Float.toInt + yOffset,
+          ~r=radius,
+          ~start=0.,
+          ~end=2. *. Js.Math._PI,
+        )
+        ctx->Canvas.fill
+      }
+    }
+  }
 
   let bgColor = Texel.convert((random(0., 360.), 1.0, random(0.0, 1.0)), Texel.okhsl, Texel.srgb)
 
   ctx->Canvas.setFillStyle(Texel.rgbToHex(bgColor))
   ctx->Canvas.fillRect(~x=0, ~y=0, ~h=yMax, ~w=xMax)
 
-  let middleAngle = random(0., 1.0)
-  let angleWidth = random(0., 0.05)
-  let startAngle = middleAngle -. angleWidth
-  let endAngle = middleAngle +. angleWidth
-
-  for _ in 0 to numSplats {
-    let color = Texel.convert(
-      (randomBySample(Jstat.betaSample(1.4, 5.), startHue, endHue), 1.0, random(0.5, 1.0)),
-      Texel.okhsv,
-      Texel.srgb,
-    )
-    let angle = random(startAngle, endAngle) *. 2. *. Js.Math._PI
-    let xAlpha = random(2.0, 3.0)
-    let yStd = random(0.1, 0.4)
-
-    let xOffset = randomInt(0, xMax)
-    let yOffset = randomInt(0, yMax)
-
-    let xSizeScaler = random(0.0, 2.0)
-    let ySizeScaler = random(0.0, 0.2)
-    let numDrops = randomInt(500, 1000)
-
-    for _ in 0 to numDrops {
-      let originalx = Jstat.betaSample(xAlpha, 5.) *. size->Int.toFloat *. xSizeScaler
-      let originaly = Jstat.normalSample(0., yStd) *. size->Int.toFloat *. ySizeScaler
-
-      let (x, y) = rotatePoint(originalx, originaly, angle)
-
-      let radius = (Jstat.betaSample(1.4, 5.) *. 4.)->Float.toInt
-
-      ctx->Canvas.setFillStyle(Texel.rgbToHex(color))
-      ctx->Canvas.beginPath
-      ctx->Canvas.arc(
-        ~x=x->Float.toInt + xOffset,
-        ~y=y->Float.toInt + yOffset,
-        ~r=radius,
-        ~start=0.,
-        ~end=2. *. Js.Math._PI,
-      )
-      ctx->Canvas.fill
-    }
+  for _ in 0 to randomInt(0, 3) {
+    makeSplats()
   }
 
   ()
@@ -138,6 +153,7 @@ module CanvasArea = {
           let context = canvas->Canvas.getContext("2d")
           canvas->Canvas.setWidth(200)
           canvas->Canvas.setHeight(200)
+
           updateCanvas(canvas, context)
         }
       | Null | Undefined => ()
