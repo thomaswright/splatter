@@ -55,34 +55,72 @@ let rotatePoint = (x, y, angle) => {
   (xNew, yNew)
 }
 
+let random = (a, b) => {
+  Math.random() *. (b -. a) +. a
+}
+
+let randomBySample = (sample, a, b) => {
+  sample *. (b -. a) +. a
+}
+
+let randomInt = (a, b) => {
+  (Math.random() *. (b->Int.toFloat -. a->Int.toFloat) +. a->Int.toFloat)->Float.toInt
+}
+
 let updateCanvas = (canvas, ctx) => {
   let xMax = canvas->Canvas.getWidth
   let yMax = canvas->Canvas.getHeight
   let size = xMax
-  let loopMax = 1000
-  let angle = 0.3 *. 2. *. Js.Math._PI
+  let numSplats = randomInt(50, 500)
+  let startHue = random(0., 360.)
+  let endHue = random(startHue, 360.)
 
-  for i in 0 to loopMax {
-    let posX = xMax / 2
-    let posY = yMax / 2
-    let originalx = Jstat.betaSample(1.4, 5.) *. size->Int.toFloat *. 0.5
-    let originaly = Jstat.normalSample(0., 0.2) *. size->Int.toFloat *. 0.1
+  let bgColor = Texel.convert((random(0., 360.), 1.0, random(0.0, 1.0)), Texel.okhsl, Texel.srgb)
 
-    let (x, y) = rotatePoint(originalx, originaly, angle)
+  ctx->Canvas.setFillStyle(Texel.rgbToHex(bgColor))
+  ctx->Canvas.fillRect(~x=0, ~y=0, ~h=yMax, ~w=xMax)
 
-    let xSample = Jstat.betaSample(1.4, 5.)
-    let radius = (xSample *. 4.)->Float.toInt
-    let rgb = Texel.convert((250., 1.0, 0.5), Texel.okhsl, Texel.srgb)
-    ctx->Canvas.setFillStyle(Texel.rgbToHex(rgb))
-    ctx->Canvas.beginPath
-    ctx->Canvas.arc(
-      ~x=x->Float.toInt + posX,
-      ~y=y->Float.toInt + posY,
-      ~r=radius,
-      ~start=0.,
-      ~end=2. *. Js.Math._PI,
+  let middleAngle = random(0., 1.0)
+  let angleWidth = random(0., 0.05)
+  let startAngle = middleAngle -. angleWidth
+  let endAngle = middleAngle +. angleWidth
+
+  for _ in 0 to numSplats {
+    let color = Texel.convert(
+      (randomBySample(Jstat.betaSample(1.4, 5.), startHue, endHue), 1.0, random(0.5, 1.0)),
+      Texel.okhsv,
+      Texel.srgb,
     )
-    ctx->Canvas.fill
+    let angle = random(startAngle, endAngle) *. 2. *. Js.Math._PI
+    let xAlpha = random(2.0, 3.0)
+    let yStd = random(0.1, 0.4)
+
+    let xOffset = randomInt(0, xMax)
+    let yOffset = randomInt(0, yMax)
+
+    let xSizeScaler = random(0.0, 2.0)
+    let ySizeScaler = random(0.0, 0.2)
+    let numDrops = randomInt(500, 1000)
+
+    for _ in 0 to numDrops {
+      let originalx = Jstat.betaSample(xAlpha, 5.) *. size->Int.toFloat *. xSizeScaler
+      let originaly = Jstat.normalSample(0., yStd) *. size->Int.toFloat *. ySizeScaler
+
+      let (x, y) = rotatePoint(originalx, originaly, angle)
+
+      let radius = (Jstat.betaSample(1.4, 5.) *. 4.)->Float.toInt
+
+      ctx->Canvas.setFillStyle(Texel.rgbToHex(color))
+      ctx->Canvas.beginPath
+      ctx->Canvas.arc(
+        ~x=x->Float.toInt + xOffset,
+        ~y=y->Float.toInt + yOffset,
+        ~r=radius,
+        ~start=0.,
+        ~end=2. *. Js.Math._PI,
+      )
+      ctx->Canvas.fill
+    }
   }
 
   ()
@@ -98,8 +136,8 @@ module CanvasArea = {
       | Value(canvasDom) => {
           let canvas = canvasDom->Obj.magic
           let context = canvas->Canvas.getContext("2d")
-          canvas->Canvas.setWidth(500)
-          canvas->Canvas.setHeight(500)
+          canvas->Canvas.setWidth(200)
+          canvas->Canvas.setHeight(200)
           updateCanvas(canvas, context)
         }
       | Null | Undefined => ()
@@ -107,18 +145,21 @@ module CanvasArea = {
 
       None
     }, [canvasRef.current])
-
-    <canvas ref={ReactDOM.Ref.domRef(canvasRef)} />
+    <div className="bg-white w-fit h-fit">
+      <canvas ref={ReactDOM.Ref.domRef(canvasRef)} />
+    </div>
   }
 }
 
 @react.component
 let make = () => {
-  let (count, setCount) = React.useState(() => 0)
-
   <div className="p-6 bg-black min-h-screen">
-    <div className="bg-white w-fit h-fit">
-      <CanvasArea />
+    <div className="flex flex-row flex-wrap gap-4">
+      {Array.make(~length=12, false)
+      ->Array.map(_ => {
+        <CanvasArea />
+      })
+      ->React.array}
     </div>
   </div>
 }

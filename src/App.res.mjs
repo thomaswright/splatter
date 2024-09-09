@@ -3,6 +3,7 @@
 import * as Jstat from "jstat";
 import * as React from "react";
 import * as Caml_option from "rescript/lib/es6/caml_option.js";
+import * as Core__Array from "@rescript/core/src/Core__Array.res.mjs";
 import * as Color from "@texel/color";
 import * as JsxRuntime from "react/jsx-runtime";
 
@@ -17,27 +18,59 @@ function rotatePoint(x, y, angle) {
         ];
 }
 
+function random(a, b) {
+  return Math.random() * (b - a) + a;
+}
+
+function randomBySample(sample, a, b) {
+  return sample * (b - a) + a;
+}
+
+function randomInt(a, b) {
+  return Math.random() * (b - a) + a | 0;
+}
+
 function updateCanvas(canvas, ctx) {
   var xMax = canvas.width;
   var yMax = canvas.height;
-  var angle = 0.3 * 2 * Math.PI;
-  for(var i = 0; i <= 1000; ++i){
-    var posX = xMax / 2 | 0;
-    var posY = yMax / 2 | 0;
-    var originalx = Jstat.beta.sample(1.4, 5) * xMax * 0.5;
-    var originaly = Jstat.normal.sample(0, 0.2) * xMax * 0.1;
-    var match = rotatePoint(originalx, originaly, angle);
-    var xSample = Jstat.beta.sample(1.4, 5);
-    var radius = xSample * 4 | 0;
-    var rgb = Color.convert([
-          250,
+  var numSplats = randomInt(50, 500);
+  var startHue = random(0, 360);
+  var endHue = random(startHue, 360);
+  var bgColor = Color.convert([
+        random(0, 360),
+        1.0,
+        random(0.0, 1.0)
+      ], Color.OKHSL, Color.sRGB);
+  ctx.fillStyle = Color.RGBToHex(bgColor);
+  ctx.fillRect(0, 0, xMax, yMax);
+  var middleAngle = random(0, 1.0);
+  var angleWidth = random(0, 0.05);
+  var startAngle = middleAngle - angleWidth;
+  var endAngle = middleAngle + angleWidth;
+  for(var _for = 0; _for <= numSplats; ++_for){
+    var color = Color.convert([
+          randomBySample(Jstat.beta.sample(1.4, 5), startHue, endHue),
           1.0,
-          0.5
-        ], Color.OKHSL, Color.sRGB);
-    ctx.fillStyle = Color.RGBToHex(rgb);
-    ctx.beginPath();
-    ctx.arc((match[0] | 0) + posX | 0, (match[1] | 0) + posY | 0, radius, 0, 2 * Math.PI);
-    ctx.fill();
+          random(0.5, 1.0)
+        ], Color.OKHSV, Color.sRGB);
+    var angle = random(startAngle, endAngle) * 2 * Math.PI;
+    var xAlpha = random(2.0, 3.0);
+    var yStd = random(0.1, 0.4);
+    var xOffset = randomInt(0, xMax);
+    var yOffset = randomInt(0, yMax);
+    var xSizeScaler = random(0.0, 2.0);
+    var ySizeScaler = random(0.0, 0.2);
+    var numDrops = randomInt(500, 1000);
+    for(var _for$1 = 0; _for$1 <= numDrops; ++_for$1){
+      var originalx = Jstat.beta.sample(xAlpha, 5) * xMax * xSizeScaler;
+      var originaly = Jstat.normal.sample(0, yStd) * xMax * ySizeScaler;
+      var match = rotatePoint(originalx, originaly, angle);
+      var radius = Jstat.beta.sample(1.4, 5) * 4 | 0;
+      ctx.fillStyle = Color.RGBToHex(color);
+      ctx.beginPath();
+      ctx.arc((match[0] | 0) + xOffset | 0, (match[1] | 0) + yOffset | 0, radius, 0, 2 * Math.PI);
+      ctx.fill();
+    }
   }
 }
 
@@ -49,24 +82,26 @@ function App$CanvasArea(props) {
             canvasDom === null;
           } else {
             var context = canvasDom.getContext("2d");
-            canvasDom.width = 500;
-            canvasDom.height = 500;
+            canvasDom.width = 200;
+            canvasDom.height = 200;
             updateCanvas(canvasDom, context);
           }
         }), [canvasRef.current]);
-  return JsxRuntime.jsx("canvas", {
-              ref: Caml_option.some(canvasRef)
+  return JsxRuntime.jsx("div", {
+              children: JsxRuntime.jsx("canvas", {
+                    ref: Caml_option.some(canvasRef)
+                  }),
+              className: "bg-white w-fit h-fit"
             });
 }
 
 function App(props) {
-  React.useState(function () {
-        return 0;
-      });
   return JsxRuntime.jsx("div", {
               children: JsxRuntime.jsx("div", {
-                    children: JsxRuntime.jsx(App$CanvasArea, {}),
-                    className: "bg-white w-fit h-fit"
+                    children: Core__Array.make(12, false).map(function (param) {
+                          return JsxRuntime.jsx(App$CanvasArea, {});
+                        }),
+                    className: "flex flex-row flex-wrap gap-4"
                   }),
               className: "p-6 bg-black min-h-screen"
             });
