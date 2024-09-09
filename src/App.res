@@ -82,7 +82,7 @@ let makeRandomWindow = (a, b) => {
 let updateCanvas = (canvas, ctx) => {
   let xMax = canvas->Canvas.getWidth
   let yMax = canvas->Canvas.getHeight
-  let size = xMax
+  let size = xMax > yMax ? xMax : yMax
 
   let makeSplats = ((minSplats, maxSplats), (minDrops, maxDrops), radiusBase, sizeNumScaler) => {
     let numSplats = randomInt(minSplats, maxSplats)
@@ -157,17 +157,20 @@ let updateCanvas = (canvas, ctx) => {
 
   let sizeNumScaler = random(size->Int.toFloat /. 300. *. 0.5, size->Int.toFloat /. 300. *. 1.5)
   Console.log(sizeNumScaler)
-  random(0., 1.) > 0.1
+  let aSeries = random(0., 1.) > 0.1
+  let bSeries = random(0., 1.) > 0.5
+  let cSeries = random(0., 1.) > 0.2
+  aSeries
     ? Array.make(~length=randomInt(1, 3), false)->Array.forEach(_ => {
         makeSplats((10, 500), (0, 1000), makeRadiusBase(), sizeNumScaler)
       })
     : ()
-  random(0., 1.) > 0.5
+  aSeries
     ? Array.make(~length=randomInt(1, 5), false)->Array.forEach(_ => {
         makeSplats((100, 200), (0, 100), makeRadiusBase(), sizeNumScaler)
       })
     : ()
-  random(0., 1.) > 0.2
+  cSeries || (!aSeries && !bSeries)
     ? Array.make(~length=randomInt(1, 3), false)->Array.forEach(_ => {
         makeSplats((10, 20), (0, 100), makeRadiusBase(), sizeNumScaler)
       })
@@ -204,8 +207,21 @@ module CanvasArea = {
 
 @react.component
 let make = () => {
-  <div className="p-6 bg-black min-h-screen">
-    <div className="flex flex-row flex-wrap gap-8">
+  <div className="p-6 bg-black min-h-screen ">
+    <div className="flex flex-col items-center justify-center text-gray-100 border-gray-100 py-8 ">
+      <div
+        className="font-thin font-serif uppercase text-5xl mb-4 border-4 border-double border-gray-100 w-fit px-8 py-4"
+        style={{letterSpacing: "0.2em"}}>
+        {"Splatter"->React.string}
+      </div>
+      <div className="uppercase text-sm text-gray-100">
+        {"A generative art project by "->React.string}
+        <a className={" font-black text-gray-100"} href={"https://github.com/thomaswright/lattice"}>
+          {"Thomas Wright"->React.string}
+        </a>
+      </div>
+    </div>
+    <div className="flex flex-row flex-wrap gap-8 justify-center py-8">
       {Array.make(~length=12, false)
       ->Array.map(_ => {
         <CanvasArea />

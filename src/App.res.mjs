@@ -37,6 +37,7 @@ function makeRandomWindowInt(a, b) {
 function updateCanvas(canvas, ctx) {
   var xMax = canvas.width;
   var yMax = canvas.height;
+  var size = xMax > yMax ? xMax : yMax;
   var makeSplats = function (param, param$1, radiusBase, sizeNumScaler) {
     var numSplats = randomInt(param[0], param[1]);
     var startHue = random(0, 360);
@@ -72,8 +73,8 @@ function updateCanvas(canvas, ctx) {
       var ySizeScaler = random(0.0, 0.2);
       var numDrops = numDropWindow() * sizeNumScaler | 0;
       for(var _for$1 = 0; _for$1 <= numDrops; ++_for$1){
-        var originalx = Jstat.beta.sample(xAlpha, 5) * xMax * xSizeScaler;
-        var originaly = Jstat.normal.sample(0, yStd) * xMax * ySizeScaler;
+        var originalx = Jstat.beta.sample(xAlpha, 5) * size * xSizeScaler;
+        var originaly = Jstat.normal.sample(0, yStd) * size * ySizeScaler;
         var match = rotatePoint(originalx, originaly, angle);
         var radius = Jstat.beta.sample(1.4, 5) * radiusBase | 0;
         ctx.fillStyle = Color.RGBToHex(color);
@@ -108,9 +109,12 @@ function updateCanvas(canvas, ctx) {
       }) : (function () {
         return dynamicRadiusBase();
       });
-  var sizeNumScaler = random(xMax / 300 * 0.5, xMax / 300 * 1.5);
+  var sizeNumScaler = random(size / 300 * 0.5, size / 300 * 1.5);
   console.log(sizeNumScaler);
-  if (random(0, 1) > 0.1) {
+  var aSeries = random(0, 1) > 0.1;
+  var bSeries = random(0, 1) > 0.5;
+  var cSeries = random(0, 1) > 0.2;
+  if (aSeries) {
     Core__Array.make(randomInt(1, 3), false).forEach(function (param) {
           makeSplats([
                 10,
@@ -121,7 +125,7 @@ function updateCanvas(canvas, ctx) {
               ], makeRadiusBase(), sizeNumScaler);
         });
   }
-  if (random(0, 1) > 0.5) {
+  if (aSeries) {
     Core__Array.make(randomInt(1, 5), false).forEach(function (param) {
           makeSplats([
                 100,
@@ -132,7 +136,7 @@ function updateCanvas(canvas, ctx) {
               ], makeRadiusBase(), sizeNumScaler);
         });
   }
-  if (random(0, 1) > 0.2) {
+  if (cSeries || !aSeries && !bSeries) {
     Core__Array.make(randomInt(1, 3), false).forEach(function (param) {
           makeSplats([
                 10,
@@ -168,14 +172,39 @@ function App$CanvasArea(props) {
 }
 
 function App(props) {
-  return JsxRuntime.jsx("div", {
-              children: JsxRuntime.jsx("div", {
-                    children: Core__Array.make(12, false).map(function (param) {
-                          return JsxRuntime.jsx(App$CanvasArea, {});
-                        }),
-                    className: "flex flex-row flex-wrap gap-8"
-                  }),
-              className: "p-6 bg-black min-h-screen"
+  return JsxRuntime.jsxs("div", {
+              children: [
+                JsxRuntime.jsxs("div", {
+                      children: [
+                        JsxRuntime.jsx("div", {
+                              children: "Splatter",
+                              className: "font-thin font-serif uppercase text-5xl mb-4 border-4 border-double border-gray-100 w-fit px-8 py-4",
+                              style: {
+                                letterSpacing: "0.2em"
+                              }
+                            }),
+                        JsxRuntime.jsxs("div", {
+                              children: [
+                                "A generative art project by ",
+                                JsxRuntime.jsx("a", {
+                                      children: "Thomas Wright",
+                                      className: " font-black text-gray-100",
+                                      href: "https://github.com/thomaswright/lattice"
+                                    })
+                              ],
+                              className: "uppercase text-sm text-gray-100"
+                            })
+                      ],
+                      className: "flex flex-col items-center justify-center text-gray-100 border-gray-100 py-8 "
+                    }),
+                JsxRuntime.jsx("div", {
+                      children: Core__Array.make(12, false).map(function (param) {
+                            return JsxRuntime.jsx(App$CanvasArea, {});
+                          }),
+                      className: "flex flex-row flex-wrap gap-8 justify-center py-8"
+                    })
+              ],
+              className: "p-6 bg-black min-h-screen "
             });
 }
 
