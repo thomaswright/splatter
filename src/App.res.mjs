@@ -15,7 +15,7 @@ function App$CanvasArea(props) {
             canvasDom === null;
           } else {
             var context = canvasDom.getContext("2d");
-            canvasDom.width = 600;
+            canvasDom.width = 300;
             canvasDom.height = 300;
             Draw.updateCanvas(canvasDom, context);
             isLoaded();

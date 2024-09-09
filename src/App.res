@@ -15,7 +15,7 @@ module CanvasArea = {
           let canvas = canvasDom->Obj.magic
           let context = canvas->Draw.Canvas.getContext("2d")
 
-          let width = 600
+          let width = 300
           let height = 300
 
           canvas->Draw.Canvas.setWidth(width)
