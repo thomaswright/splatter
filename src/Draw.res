@@ -159,7 +159,7 @@ let updateCanvas = (canvas, ctx) => {
   let makeRadiusBase = Math.random() > 0.5 ? () => dynamicRadiusBase() : () => dynamicRadiusBase()
 
   let sizeNumScaler = random(size->Int.toFloat /. 300. *. 0.5, size->Int.toFloat /. 300. *. 1.5)
-  Console.log(sizeNumScaler)
+  // Console.log(sizeNumScaler)
   let aSeries = random(0., 1.) > 0.1
   let bSeries = random(0., 1.) > 0.5
   let cSeries = random(0., 1.) > 0.2

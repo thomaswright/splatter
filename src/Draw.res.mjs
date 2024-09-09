@@ -124,7 +124,6 @@ function updateCanvas(canvas, ctx) {
         return dynamicRadiusBase();
       });
   var sizeNumScaler = random(size / 300 * 0.5, size / 300 * 1.5);
-  console.log(sizeNumScaler);
   var aSeries = random(0, 1) > 0.1;
   var bSeries = random(0, 1) > 0.5;
   var cSeries = random(0, 1) > 0.2;
