@@ -79,7 +79,8 @@ let make = () => {
       </div>
       <div className="uppercase text-sm text-gray-100">
         {"A generative art project by "->React.string}
-        <a className={" font-black text-gray-100"} href={"https://github.com/thomaswright/lattice"}>
+        <a
+          className={" font-black text-gray-100"} href={"https://github.com/thomaswright/splatter"}>
           {"Thomas Wright"->React.string}
         </a>
       </div>
