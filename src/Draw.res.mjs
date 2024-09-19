@@ -31,6 +31,19 @@ var rng = makeSeeded(1);
 
 Jstat.setRandom(rng);
 
+function rngShuffle(arr) {
+  return arr.map(function (v) {
+                  return [
+                          v,
+                          rng()
+                        ];
+                }).toSorted(function (param, param$1) {
+                return param[1] - param$1[1];
+              }).map(function (param) {
+              return param[0];
+            });
+}
+
 function rotatePoint(x, y, angle) {
   var cosTheta = Math.cos(angle);
   var sinTheta = Math.sin(angle);
@@ -148,7 +161,7 @@ function updateCanvas(canvas, ctx) {
   var aSeries = random(0, 1) > 0.1;
   var bSeries = random(0, 1) > 0.5;
   var cSeries = random(0, 1) > 0.2;
-  [
+  rngShuffle([
           (function () {
               if (aSeries) {
                 Core__Array.make(randomInt(1, 3), false).forEach(function (param) {
@@ -194,15 +207,8 @@ function updateCanvas(canvas, ctx) {
               }
               
             })
-        ].map(function (v) {
-            return [
-                    v,
-                    rng()
-                  ];
-          }).toSorted(function (param, param$1) {
-          return param[1] - param$1[1];
-        }).forEach(function (param) {
-        param[0]();
+        ]).forEach(function (v) {
+        v();
       });
 }
 
@@ -212,6 +218,7 @@ export {
   Jstat$1 as Jstat,
   Rng ,
   rng ,
+  rngShuffle ,
   rotatePoint ,
   random ,
   randomBySample ,

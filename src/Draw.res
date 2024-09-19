@@ -70,6 +70,12 @@ module Rng = {
 let rng = Rng.makeSeeded(1.)
 Jstat.setRandom(rng)
 
+let rngShuffle = arr =>
+  arr
+  ->Array.map(v => (v, rng()))
+  ->Array.toSorted(((_, a), (_, b)) => a -. b)
+  ->Array.map(((v, _)) => v)
+
 let rotatePoint = (x, y, angle) => {
   let cosTheta = Math.cos(angle)
   let sinTheta = Math.sin(angle)
@@ -211,7 +217,6 @@ let updateCanvas = (canvas, ctx) => {
         : ()
     },
   ]
-  ->Array.map(v => (v, rng()))
-  ->Array.toSorted(((_, a), (_, b)) => a -. b)
-  ->Array.forEach(((v, _)) => v())
+  ->rngShuffle
+  ->Array.forEach(v => v())
 }
