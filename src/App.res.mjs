@@ -47,11 +47,11 @@ function App(props) {
       });
   var setMounted = match$1[1];
   var match$2 = React.useState(function () {
-        return Core__Array.make(10, false);
+        return Core__Array.make(20, false);
       });
   var setLoaded = match$2[1];
   React.useEffect((function () {
-          var canvases = Core__Array.make(10, false).map(function (param, i) {
+          var canvases = Core__Array.make(20, false).map(function (param, i) {
                 return JsxRuntime.jsx(App$CanvasArea, {
                             isLoaded: (function () {
                                 setLoaded(function (a) {

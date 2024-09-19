@@ -58,7 +58,7 @@ function makeCachedRng(rng, len) {
 
 function updateCanvas(canvas, ctx, seed) {
   var rng = makeSeeded(seed);
-  var cachedRng = makeCachedRng(rng, 1000);
+  var cachedRng = makeCachedRng(rng, 50000);
   Jstat.setRandom(cachedRng);
   var random = function (a, b) {
     return cachedRng() * (b - a) + a;

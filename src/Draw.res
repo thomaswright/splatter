@@ -92,7 +92,7 @@ let makeCachedRng = (rng, len) => {
 
 let updateCanvas = (canvas, ctx, seed) => {
   let rng = Rng.makeSeeded(seed)
-  let cachedRng = makeCachedRng(rng, 1000)
+  let cachedRng = makeCachedRng(rng, 50000)
 
   Jstat.setRandom(cachedRng)
 
