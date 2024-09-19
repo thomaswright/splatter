@@ -40,6 +40,7 @@ module Canvas = {
 module Jstat = {
   @module("jstat") @scope("beta") external betaSample: (float, float) => float = "sample"
   @module("jstat") @scope("normal") external normalSample: (float, float) => float = "sample"
+  @module("jstat") external setRandom: (unit => float) => unit = "setRandom"
 }
 
 // let rgb = Texel.convert(
@@ -47,6 +48,27 @@ module Jstat = {
 //       Texel.okhsv,
 //       Texel.srgb,
 //     )
+
+module Rng = {
+  let m = 0x80000000->Int.toFloat // 2^31
+  let a = 1103515245.
+  let c = 12345.
+
+  let makeSeeded = seed => {
+    let state = ref(seed)
+    // let count = ref(0)
+
+    () => {
+      // Console.log(count.contents)
+      // count := count.contents + 1
+      state := Float.mod(a *. state.contents +. c, m)
+      -1. *. state.contents /. m
+    }
+  }
+}
+
+let rng = Rng.makeSeeded(1.)
+Jstat.setRandom(rng)
 
 let rotatePoint = (x, y, angle) => {
   let cosTheta = Math.cos(angle)
@@ -59,7 +81,7 @@ let rotatePoint = (x, y, angle) => {
 }
 
 let random = (a, b) => {
-  Math.random() *. (b -. a) +. a
+  rng() *. (b -. a) +. a
 }
 
 let randomBySample = (sample, a, b) => {
@@ -67,7 +89,7 @@ let randomBySample = (sample, a, b) => {
 }
 
 let randomInt = (a, b) => {
-  (Math.random() *. (b->Int.toFloat -. a->Int.toFloat) +. a->Int.toFloat)->Float.toInt
+  (rng() *. (b->Int.toFloat -. a->Int.toFloat) +. a->Int.toFloat)->Float.toInt
 }
 
 let makeRandomWindowInt = (a, b) => {
@@ -142,7 +164,7 @@ let updateCanvas = (canvas, ctx) => {
   }
 
   let getBgL = () => {
-    switch Math.random() {
+    switch rng() {
     | x if x < 0.4 => random(0.0, 0.2)
     | x if x < 0.6 => random(0.2, 0.8)
     | _ => random(0.8, 1.0)
@@ -156,13 +178,16 @@ let updateCanvas = (canvas, ctx) => {
 
   let dynamicRadiusBase = () => Jstat.betaSample(2.5, 17.) *. random(10., 100.)
 
-  let makeRadiusBase = Math.random() > 0.5 ? () => dynamicRadiusBase() : () => dynamicRadiusBase()
+  let makeRadiusBase = rng() > 0.5 ? () => dynamicRadiusBase() : () => dynamicRadiusBase()
 
   let sizeNumScaler = random(size->Int.toFloat /. 300. *. 0.5, size->Int.toFloat /. 300. *. 1.5)
   // Console.log(sizeNumScaler)
   let aSeries = random(0., 1.) > 0.1
   let bSeries = random(0., 1.) > 0.5
   let cSeries = random(0., 1.) > 0.2
+
+  // Console.log3(aSeries, bSeries, cSeries)
+
   [
     () => {
       aSeries
@@ -186,8 +211,7 @@ let updateCanvas = (canvas, ctx) => {
         : ()
     },
   ]
-  ->Array.toShuffled
-  ->Array.forEach(v => v())
-
-  ()
+  ->Array.map(v => (v, rng()))
+  ->Array.toSorted(((_, a), (_, b)) => a -. b)
+  ->Array.forEach(((v, _)) => v())
 }

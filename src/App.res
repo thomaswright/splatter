@@ -47,7 +47,7 @@ module CanvasArea = {
   }
 }
 
-let numSplatters = 40
+let numSplatters = 10
 @react.component
 let make = () => {
   let (canvases, setCanvases) = React.useState(_ => [])

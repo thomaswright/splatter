@@ -10,6 +10,27 @@ var Canvas = {};
 
 var Jstat$1 = {};
 
+function makeSeeded(seed) {
+  var state = {
+    contents: seed
+  };
+  return function () {
+    state.contents = (1103515245 * state.contents + 12345) % -2147483648;
+    return -1 * state.contents / -2147483648;
+  };
+}
+
+var Rng = {
+  m: -2147483648,
+  a: 1103515245,
+  c: 12345,
+  makeSeeded: makeSeeded
+};
+
+var rng = makeSeeded(1);
+
+Jstat.setRandom(rng);
+
 function rotatePoint(x, y, angle) {
   var cosTheta = Math.cos(angle);
   var sinTheta = Math.sin(angle);
@@ -22,7 +43,7 @@ function rotatePoint(x, y, angle) {
 }
 
 function random(a, b) {
-  return Math.random() * (b - a) + a;
+  return rng() * (b - a) + a;
 }
 
 function randomBySample(sample, a, b) {
@@ -30,7 +51,7 @@ function randomBySample(sample, a, b) {
 }
 
 function randomInt(a, b) {
-  return Math.random() * (b - a) + a | 0;
+  return rng() * (b - a) + a | 0;
 }
 
 function makeRandomWindowInt(a, b) {
@@ -99,7 +120,7 @@ function updateCanvas(canvas, ctx) {
     }
   };
   var getBgL = function () {
-    var x = Math.random();
+    var x = rng();
     if (x < 0.4) {
       return random(0.0, 0.2);
     } else if (x < 0.6) {
@@ -118,7 +139,7 @@ function updateCanvas(canvas, ctx) {
   var dynamicRadiusBase = function () {
     return Jstat.beta.sample(2.5, 17) * random(10, 100);
   };
-  var makeRadiusBase = Math.random() > 0.5 ? (function () {
+  var makeRadiusBase = rng() > 0.5 ? (function () {
         return dynamicRadiusBase();
       }) : (function () {
         return dynamicRadiusBase();
@@ -127,7 +148,7 @@ function updateCanvas(canvas, ctx) {
   var aSeries = random(0, 1) > 0.1;
   var bSeries = random(0, 1) > 0.5;
   var cSeries = random(0, 1) > 0.2;
-  Core__Array.toShuffled([
+  [
           (function () {
               if (aSeries) {
                 Core__Array.make(randomInt(1, 3), false).forEach(function (param) {
@@ -173,8 +194,15 @@ function updateCanvas(canvas, ctx) {
               }
               
             })
-        ]).forEach(function (v) {
-        v();
+        ].map(function (v) {
+            return [
+                    v,
+                    rng()
+                  ];
+          }).toSorted(function (param, param$1) {
+          return param[1] - param$1[1];
+        }).forEach(function (param) {
+        param[0]();
       });
 }
 
@@ -182,6 +210,8 @@ export {
   Texel ,
   Canvas ,
   Jstat$1 as Jstat,
+  Rng ,
+  rng ,
   rotatePoint ,
   random ,
   randomBySample ,
@@ -190,4 +220,4 @@ export {
   makeRandomWindow ,
   updateCanvas ,
 }
-/* jstat Not a pure module */
+/* rng Not a pure module */
