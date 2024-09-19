@@ -61,13 +61,15 @@ let make = () => {
   let (loaded, setLoaded) = React.useState(_ => Array.make(~length=numSplatters, false))
 
   React.useEffect(() => {
-    let canvases = Array.make(~length=numSplatters, false)->Array.mapWithIndex((_, i) =>
+    let canvases = Array.make(~length=numSplatters, false)->Array.mapWithIndex((_, i) => {
+      let seed = Math.random()
       <CanvasArea
+        key={seed->Float.toString}
         // seed={i->Int.toFloat}
-        seed={Math.random()}
+        seed={seed}
         isLoaded={() => setLoaded(a => a->Array.mapWithIndex((v, vi) => i == vi ? true : v))}
       />
-    )
+    })
     setCanvases(_ => canvases)
     let timeoutId = setTimeout(() => {
       setMounted(_ => true)

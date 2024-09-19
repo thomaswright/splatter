@@ -52,6 +52,7 @@ function App(props) {
   var setLoaded = match$2[1];
   React.useEffect((function () {
           var canvases = Core__Array.make(40, false).map(function (param, i) {
+                var seed = Math.random();
                 return JsxRuntime.jsx(App$CanvasArea, {
                             isLoaded: (function () {
                                 setLoaded(function (a) {
@@ -64,8 +65,8 @@ function App(props) {
                                                 });
                                     });
                               }),
-                            seed: Math.random()
-                          });
+                            seed: seed
+                          }, seed.toString());
               });
           setCanvases(function (param) {
                 return canvases;
