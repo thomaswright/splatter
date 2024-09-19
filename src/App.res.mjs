@@ -7,6 +7,10 @@ import * as Core__Array from "@rescript/core/src/Core__Array.res.mjs";
 import * as JsxRuntime from "react/jsx-runtime";
 import * as Usehooks from "@uidotdev/usehooks";
 
+var width = 600;
+
+var height = 600;
+
 function App$CanvasArea(props) {
   var seed = props.seed;
   var isLoaded = props.isLoaded;
@@ -19,15 +23,20 @@ function App$CanvasArea(props) {
             canvasDom === null;
           } else {
             var context = canvasDom.getContext("2d");
-            canvasDom.width = 300;
-            canvasDom.height = 300;
+            context.scale(300 / width, 300 / height);
+            canvasDom.width = width;
+            canvasDom.height = height;
             Draw.updateCanvas(canvasDom, context, seed);
             isLoaded();
           }
         }), [canvasRef.current]);
   return JsxRuntime.jsx("div", {
               children: JsxRuntime.jsx("canvas", {
-                    ref: Caml_option.some(canvasRef)
+                    ref: Caml_option.some(canvasRef),
+                    style: {
+                      height: (300).toString() + "px",
+                      width: (300).toString() + "px"
+                    }
                   }),
               className: "bg-white w-fit h-fit",
               title: "seed:" + seed.toString(),
@@ -47,11 +56,11 @@ function App(props) {
       });
   var setMounted = match$1[1];
   var match$2 = React.useState(function () {
-        return Core__Array.make(40, false);
+        return Core__Array.make(10, false);
       });
   var setLoaded = match$2[1];
   React.useEffect((function () {
-          var canvases = Core__Array.make(40, false).map(function (param, i) {
+          var canvases = Core__Array.make(10, false).map(function (param, i) {
                 var seed = Math.random();
                 return JsxRuntime.jsx(App$CanvasArea, {
                             isLoaded: (function () {

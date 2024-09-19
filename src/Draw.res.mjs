@@ -91,9 +91,9 @@ function updateCanvas(canvas, ctx, seed) {
   var makeSplats = function (param, param$1, radiusBase, sizeNumScaler) {
     var numSplats = randomInt(param[0], param[1]);
     var startHue = random(0, 360);
-    var endHue = random(startHue, 360);
+    var endHueLength = random(0, 360);
     var getHue = function () {
-      return randomBySample(Jstat.beta.sample(1.4, 5), startHue, endHue);
+      return randomBySample(Jstat.beta.sample(1.4, 5), startHue, startHue + endHueLength) % 360;
     };
     var valueFloor = random(0.2, 0.7);
     var middleAngle = random(0, 1.0);
@@ -150,67 +150,85 @@ function updateCanvas(canvas, ctx, seed) {
       ], Color.OKHSL, Color.sRGB);
   ctx.fillStyle = Color.RGBToHex(bgColor);
   ctx.fillRect(0, 0, xMax, yMax);
+  var sizeNumScaler = 1.0 * random(size / 300 * 0.5, size / 300 * 1.5);
   var dynamicRadiusBase = function () {
-    return Jstat.beta.sample(2.5, 17) * random(10, 100);
+    return Jstat.beta.sample(2.5, 17) * random(10, 100) * 2.0;
   };
   var makeRadiusBase = rng() > 0.5 ? (function () {
         return dynamicRadiusBase();
       }) : (function () {
         return dynamicRadiusBase();
       });
-  var sizeNumScaler = random(size / 300 * 0.5, size / 300 * 1.5);
   var aSeries = random(0, 1) > 0.1;
   var bSeries = random(0, 1) > 0.5;
   var cSeries = random(0, 1) > 0.2;
-  rngShuffle([
-          (function () {
-              if (aSeries) {
-                Core__Array.make(randomInt(1, 3), false).forEach(function (param) {
-                      makeSplats([
-                            10,
-                            500
-                          ], [
-                            0,
-                            1000
-                          ], makeRadiusBase(), sizeNumScaler);
-                    });
-                return ;
-              }
-              
-            }),
-          (function () {
-              if (bSeries) {
-                Core__Array.make(randomInt(1, 5), false).forEach(function (param) {
-                      makeSplats([
-                            100,
-                            200
-                          ], [
-                            0,
-                            100
-                          ], makeRadiusBase(), sizeNumScaler);
-                    });
-                return ;
-              }
-              
-            }),
-          (function () {
-              if (cSeries || !aSeries && !bSeries) {
-                Core__Array.make(randomInt(1, 3), false).forEach(function (param) {
-                      makeSplats([
-                            10,
-                            20
-                          ], [
-                            0,
-                            100
-                          ], makeRadiusBase(), sizeNumScaler);
-                    });
-                return ;
-              }
-              
-            })
-        ]).forEach(function (v) {
-        v();
-      });
+  var way1 = function () {
+    rngShuffle([
+            (function () {
+                if (aSeries) {
+                  Core__Array.make(randomInt(1, 3), false).forEach(function (param) {
+                        makeSplats([
+                              10,
+                              500
+                            ], [
+                              0,
+                              1000
+                            ], makeRadiusBase(), sizeNumScaler);
+                      });
+                  return ;
+                }
+                
+              }),
+            (function () {
+                if (bSeries) {
+                  Core__Array.make(randomInt(1, 5), false).forEach(function (param) {
+                        makeSplats([
+                              100,
+                              200
+                            ], [
+                              0,
+                              100
+                            ], makeRadiusBase(), sizeNumScaler);
+                      });
+                  return ;
+                }
+                
+              }),
+            (function () {
+                if (cSeries || !aSeries && !bSeries) {
+                  Core__Array.make(randomInt(1, 3), false).forEach(function (param) {
+                        makeSplats([
+                              10,
+                              20
+                            ], [
+                              0,
+                              100
+                            ], makeRadiusBase(), sizeNumScaler);
+                      });
+                  return ;
+                }
+                
+              })
+          ]).forEach(function (v) {
+          v();
+        });
+  };
+  var way2 = function () {
+    Core__Array.make(randomInt(1, 50), false).forEach(function (param) {
+          makeSplats([
+                randomInt(10, 100),
+                randomInt(20, 500)
+              ], [
+                0,
+                randomInt(100, 1000)
+              ], makeRadiusBase(), sizeNumScaler);
+        });
+  };
+  if (rng() > 0.2) {
+    return way1();
+  } else {
+    return way2();
+  }
 }
 
 export {

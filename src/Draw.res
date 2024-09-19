@@ -28,6 +28,7 @@ module Canvas = {
   @set external setFillStyle: (context, string) => unit = "fillStyle"
   @send external fill: context => unit = "fill"
   @send external beginPath: context => unit = "beginPath"
+  @send external scale: (context, float, float) => unit = "scale"
 
   @get external getWidth: canvas => int = "width"
   @get external getHeight: canvas => int = "height"
@@ -110,7 +111,7 @@ let updateCanvas = (canvas, ctx, seed) => {
     () => randomInt(start, end)
   }
 
-  let makeRandomWindow = (a, b) => {
+  let _makeRandomWindow = (a, b) => {
     let start = random(a, b)
     let end = random(start, b)
     () => random(start, end)
@@ -129,8 +130,11 @@ let updateCanvas = (canvas, ctx, seed) => {
   let makeSplats = ((minSplats, maxSplats), (minDrops, maxDrops), radiusBase, sizeNumScaler) => {
     let numSplats = randomInt(minSplats, maxSplats)
     let startHue = random(0., 360.)
-    let endHue = random(startHue, 360.)
-    let getHue = () => randomBySample(Jstat.betaSample(1.4, 5.), startHue, endHue)
+    let endHueLength = random(0., 360.)
+
+    let getHue = () => {
+      Float.mod(randomBySample(Jstat.betaSample(1.4, 5.), startHue, startHue +. endHueLength), 360.)
+    }
     // let getValue = makeRandomWindow(0.0, 1.0)
     let valueFloor = random(0.2, 0.7)
     // let saturation = random(0.8, 1.0)
@@ -193,11 +197,14 @@ let updateCanvas = (canvas, ctx, seed) => {
   ctx->Canvas.setFillStyle(Texel.rgbToHex(bgColor))
   ctx->Canvas.fillRect(~x=0, ~y=0, ~h=yMax, ~w=xMax)
 
-  let dynamicRadiusBase = () => Jstat.betaSample(2.5, 17.) *. random(10., 100.)
+  let radiusScale = 2.0
+  let sizeNumScaler =
+    1.0 *. random(size->Int.toFloat /. 300. *. 0.5, size->Int.toFloat /. 300. *. 1.5)
+
+  let dynamicRadiusBase = () => Jstat.betaSample(2.5, 17.) *. random(10., 100.) *. radiusScale
 
   let makeRadiusBase = rng() > 0.5 ? () => dynamicRadiusBase() : () => dynamicRadiusBase()
 
-  let sizeNumScaler = random(size->Int.toFloat /. 300. *. 0.5, size->Int.toFloat /. 300. *. 1.5)
   // Console.log(sizeNumScaler)
   let aSeries = random(0., 1.) > 0.1
   let bSeries = random(0., 1.) > 0.5
@@ -205,29 +212,42 @@ let updateCanvas = (canvas, ctx, seed) => {
 
   // Console.log3(aSeries, bSeries, cSeries)
 
-  [
-    () => {
-      aSeries
-        ? Array.make(~length=randomInt(1, 3), false)->Array.forEach(_ => {
-            makeSplats((10, 500), (0, 1000), makeRadiusBase(), sizeNumScaler)
-          })
-        : ()
-    },
-    () => {
-      bSeries
-        ? Array.make(~length=randomInt(1, 5), false)->Array.forEach(_ => {
-            makeSplats((100, 200), (0, 100), makeRadiusBase(), sizeNumScaler)
-          })
-        : ()
-    },
-    () => {
-      cSeries || (!aSeries && !bSeries)
-        ? Array.make(~length=randomInt(1, 3), false)->Array.forEach(_ => {
-            makeSplats((10, 20), (0, 100), makeRadiusBase(), sizeNumScaler)
-          })
-        : ()
-    },
-  ]
-  ->rngShuffle
-  ->Array.forEach(v => v())
+  let way1 = () =>
+    [
+      () => {
+        aSeries
+          ? Array.make(~length=randomInt(1, 3), false)->Array.forEach(_ => {
+              makeSplats((10, 500), (0, 1000), makeRadiusBase(), sizeNumScaler)
+            })
+          : ()
+      },
+      () => {
+        bSeries
+          ? Array.make(~length=randomInt(1, 5), false)->Array.forEach(_ => {
+              makeSplats((100, 200), (0, 100), makeRadiusBase(), sizeNumScaler)
+            })
+          : ()
+      },
+      () => {
+        cSeries || (!aSeries && !bSeries)
+          ? Array.make(~length=randomInt(1, 3), false)->Array.forEach(_ => {
+              makeSplats((10, 20), (0, 100), makeRadiusBase(), sizeNumScaler)
+            })
+          : ()
+      },
+    ]
+    ->rngShuffle
+    ->Array.forEach(v => v())
+
+  let way2 = () =>
+    Array.make(~length=randomInt(1, 50), false)->Array.forEach(_ => {
+      makeSplats(
+        (randomInt(10, 100), randomInt(20, 500)),
+        (0, randomInt(100, 1000)),
+        makeRadiusBase(),
+        sizeNumScaler,
+      )
+    })
+
+  rng() > 0.2 ? way1() : way2()
 }

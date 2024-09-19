@@ -1,10 +1,15 @@
 type worker
 
-@set external onmessage: (worker, 'event => unit) => unit = "onmessage"
-@send external postMessage: (worker, 'message) => unit = "postMessage"
+@set external _onmessage: (worker, 'event => unit) => unit = "onmessage"
+@send external _postMessage: (worker, 'message) => unit = "postMessage"
 @module("./Worker.res.mjs?worker") external newWorker: unit => worker = "default"
 @module("@uidotdev/usehooks")
 external useCopyToClipboard: unit => (string, string => unit) = "useCopyToClipboard"
+
+let divWidth = 300
+let divHeight = 300
+let width = divWidth * 2
+let height = divHeight * 2
 
 module CanvasArea = {
   @react.component
@@ -16,9 +21,10 @@ module CanvasArea = {
       | Value(canvasDom) => {
           let canvas = canvasDom->Obj.magic
           let context = canvas->Draw.Canvas.getContext("2d")
-
-          let width = 300
-          let height = 300
+          context->Draw.Canvas.scale(
+            divWidth->Int.toFloat /. width->Int.toFloat,
+            divHeight->Int.toFloat /. height->Int.toFloat,
+          )
 
           canvas->Draw.Canvas.setWidth(width)
           canvas->Draw.Canvas.setHeight(height)
@@ -46,13 +52,19 @@ module CanvasArea = {
       className="bg-white w-fit h-fit">
       // <React.Suspense fallback={<div> {"Loading"->React.string} </div>}>
 
-      <canvas ref={ReactDOM.Ref.domRef(canvasRef)} />
+      <canvas
+        style={{
+          width: divWidth->Int.toString ++ "px",
+          height: divHeight->Int.toString ++ "px",
+        }}
+        ref={ReactDOM.Ref.domRef(canvasRef)}
+      />
       // </React.Suspense>
     </div>
   }
 }
 
-let numSplatters = 40
+let numSplatters = 10
 @react.component
 let make = () => {
   let (canvases, setCanvases) = React.useState(_ => [])
