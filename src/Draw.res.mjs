@@ -27,23 +27,6 @@ var Rng = {
   makeSeeded: makeSeeded
 };
 
-var rng = makeSeeded(1);
-
-Jstat.setRandom(rng);
-
-function rngShuffle(arr) {
-  return arr.map(function (v) {
-                  return [
-                          v,
-                          rng()
-                        ];
-                }).toSorted(function (param, param$1) {
-                return param[1] - param$1[1];
-              }).map(function (param) {
-              return param[0];
-            });
-}
-
 function rotatePoint(x, y, angle) {
   var cosTheta = Math.cos(angle);
   var sinTheta = Math.sin(angle);
@@ -55,35 +38,38 @@ function rotatePoint(x, y, angle) {
         ];
 }
 
-function random(a, b) {
-  return rng() * (b - a) + a;
-}
-
 function randomBySample(sample, a, b) {
   return sample * (b - a) + a;
 }
 
-function randomInt(a, b) {
-  return rng() * (b - a) + a | 0;
-}
-
-function makeRandomWindowInt(a, b) {
-  var start = randomInt(a, b);
-  var end = randomInt(start, b);
-  return function () {
-    return randomInt(start, end);
+function updateCanvas(canvas, ctx, seed) {
+  var rng = makeSeeded(seed);
+  Jstat.setRandom(rng);
+  var random = function (a, b) {
+    return rng() * (b - a) + a;
   };
-}
-
-function makeRandomWindow(a, b) {
-  var start = random(a, b);
-  var end = random(start, b);
-  return function () {
-    return random(start, end);
+  var randomInt = function (a, b) {
+    return rng() * (b - a) + a | 0;
   };
-}
-
-function updateCanvas(canvas, ctx) {
+  var makeRandomWindowInt = function (a, b) {
+    var start = randomInt(a, b);
+    var end = randomInt(start, b);
+    return function () {
+      return randomInt(start, end);
+    };
+  };
+  var rngShuffle = function (arr) {
+    return arr.map(function (v) {
+                    return [
+                            v,
+                            rng()
+                          ];
+                  }).toSorted(function (param, param$1) {
+                  return param[1] - param$1[1];
+                }).map(function (param) {
+                return param[0];
+              });
+  };
   var xMax = canvas.width;
   var yMax = canvas.height;
   var size = xMax > yMax ? xMax : yMax;
@@ -217,14 +203,8 @@ export {
   Canvas ,
   Jstat$1 as Jstat,
   Rng ,
-  rng ,
-  rngShuffle ,
   rotatePoint ,
-  random ,
   randomBySample ,
-  randomInt ,
-  makeRandomWindowInt ,
-  makeRandomWindow ,
   updateCanvas ,
 }
-/* rng Not a pure module */
+/* jstat Not a pure module */

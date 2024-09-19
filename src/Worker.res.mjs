@@ -5,7 +5,7 @@ import * as Draw from "./Draw.res.mjs";
 self.onmessage = (function ($$event) {
     var offscreenCanvas = new OffscreenCanvas($$event.data.width, $$event.data.height);
     var offscreenContext = offscreenCanvas.getContext("2d");
-    Draw.updateCanvas(offscreenCanvas, offscreenContext);
+    Draw.updateCanvas(offscreenCanvas, offscreenContext, 1.0);
     self.postMessage({
           success: true,
           imageBitmap: offscreenCanvas.transferToImageBitmap()

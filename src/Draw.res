@@ -67,15 +67,6 @@ module Rng = {
   }
 }
 
-let rng = Rng.makeSeeded(1.)
-Jstat.setRandom(rng)
-
-let rngShuffle = arr =>
-  arr
-  ->Array.map(v => (v, rng()))
-  ->Array.toSorted(((_, a), (_, b)) => a -. b)
-  ->Array.map(((v, _)) => v)
-
 let rotatePoint = (x, y, angle) => {
   let cosTheta = Math.cos(angle)
   let sinTheta = Math.sin(angle)
@@ -86,31 +77,40 @@ let rotatePoint = (x, y, angle) => {
   (xNew, yNew)
 }
 
-let random = (a, b) => {
-  rng() *. (b -. a) +. a
-}
-
 let randomBySample = (sample, a, b) => {
   sample *. (b -. a) +. a
 }
 
-let randomInt = (a, b) => {
-  (rng() *. (b->Int.toFloat -. a->Int.toFloat) +. a->Int.toFloat)->Float.toInt
-}
+let updateCanvas = (canvas, ctx, seed) => {
+  let rng = Rng.makeSeeded(seed)
+  Jstat.setRandom(rng)
 
-let makeRandomWindowInt = (a, b) => {
-  let start = randomInt(a, b)
-  let end = randomInt(start, b)
-  () => randomInt(start, end)
-}
+  let random = (a, b) => {
+    rng() *. (b -. a) +. a
+  }
 
-let makeRandomWindow = (a, b) => {
-  let start = random(a, b)
-  let end = random(start, b)
-  () => random(start, end)
-}
+  let randomInt = (a, b) => {
+    (rng() *. (b->Int.toFloat -. a->Int.toFloat) +. a->Int.toFloat)->Float.toInt
+  }
 
-let updateCanvas = (canvas, ctx) => {
+  let makeRandomWindowInt = (a, b) => {
+    let start = randomInt(a, b)
+    let end = randomInt(start, b)
+    () => randomInt(start, end)
+  }
+
+  let makeRandomWindow = (a, b) => {
+    let start = random(a, b)
+    let end = random(start, b)
+    () => random(start, end)
+  }
+
+  let rngShuffle = arr =>
+    arr
+    ->Array.map(v => (v, rng()))
+    ->Array.toSorted(((_, a), (_, b)) => a -. b)
+    ->Array.map(((v, _)) => v)
+
   let xMax = canvas->Canvas.getWidth
   let yMax = canvas->Canvas.getHeight
   let size = xMax > yMax ? xMax : yMax

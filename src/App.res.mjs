@@ -5,10 +5,14 @@ import * as React from "react";
 import * as Caml_option from "rescript/lib/es6/caml_option.js";
 import * as Core__Array from "@rescript/core/src/Core__Array.res.mjs";
 import * as JsxRuntime from "react/jsx-runtime";
+import * as Usehooks from "@uidotdev/usehooks";
 
 function App$CanvasArea(props) {
+  var seed = props.seed;
   var isLoaded = props.isLoaded;
   var canvasRef = React.useRef(null);
+  var match = Usehooks.useCopyToClipboard();
+  var copyToClipboard = match[1];
   React.useEffect((function () {
           var canvasDom = canvasRef.current;
           if (canvasDom === null || canvasDom === undefined) {
@@ -17,7 +21,7 @@ function App$CanvasArea(props) {
             var context = canvasDom.getContext("2d");
             canvasDom.width = 300;
             canvasDom.height = 300;
-            Draw.updateCanvas(canvasDom, context);
+            Draw.updateCanvas(canvasDom, context, seed);
             isLoaded();
           }
         }), [canvasRef.current]);
@@ -25,7 +29,11 @@ function App$CanvasArea(props) {
               children: JsxRuntime.jsx("canvas", {
                     ref: Caml_option.some(canvasRef)
                   }),
-              className: "bg-white w-fit h-fit"
+              className: "bg-white w-fit h-fit",
+              title: "seed:" + seed.toString(),
+              onClick: (function (param) {
+                  copyToClipboard(seed.toString());
+                })
             });
 }
 
@@ -55,7 +63,8 @@ function App(props) {
                                                   }
                                                 });
                                     });
-                              })
+                              }),
+                            seed: Math.random()
                           });
               });
           setCanvases(function (param) {

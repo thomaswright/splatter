@@ -3,12 +3,14 @@ type worker
 @set external onmessage: (worker, 'event => unit) => unit = "onmessage"
 @send external postMessage: (worker, 'message) => unit = "postMessage"
 @module("./Worker.res.mjs?worker") external newWorker: unit => worker = "default"
+@module("@uidotdev/usehooks")
+external useCopyToClipboard: unit => (string, string => unit) = "useCopyToClipboard"
 
 module CanvasArea = {
   @react.component
-  let make = (~isLoaded) => {
+  let make = (~isLoaded, ~seed) => {
     let canvasRef = React.useRef(Nullable.null)
-
+    let (_copiedText, copyToClipboard) = useCopyToClipboard()
     React.useEffect1(() => {
       switch canvasRef.current {
       | Value(canvasDom) => {
@@ -29,7 +31,7 @@ module CanvasArea = {
           //   }
           // })
 
-          Draw.updateCanvas(canvas, context)
+          Draw.updateCanvas(canvas, context, seed)
           isLoaded()
         }
       | Null | Undefined => ()
@@ -38,7 +40,10 @@ module CanvasArea = {
       None
     }, [canvasRef.current])
 
-    <div className="bg-white w-fit h-fit">
+    <div
+      onClick={_ => copyToClipboard(seed->Float.toString)}
+      title={"seed:" ++ seed->Float.toString}
+      className="bg-white w-fit h-fit">
       // <React.Suspense fallback={<div> {"Loading"->React.string} </div>}>
 
       <canvas ref={ReactDOM.Ref.domRef(canvasRef)} />
@@ -59,6 +64,7 @@ let make = () => {
     let canvases =
       Array.make(~length=numSplatters, false)->Array.mapWithIndex((_, i) =>
         <CanvasArea
+          seed={Math.random()}
           isLoaded={() => setLoaded(a => a->Array.mapWithIndex((v, vi) => i == vi ? true : v))}
         />
       )
