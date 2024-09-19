@@ -6,28 +6,26 @@ type worker
 @module("@uidotdev/usehooks")
 external useCopyToClipboard: unit => (string, string => unit) = "useCopyToClipboard"
 
-let divWidth = 300
-let divHeight = 300
-let width = divWidth * 2
-let height = divHeight * 2
+@val @scope("window")
+external dpr: float = "devicePixelRatio"
+let width = 300
+let height = 300
 
 module CanvasArea = {
   @react.component
   let make = (~isLoaded, ~seed) => {
     let canvasRef = React.useRef(Nullable.null)
     let (_copiedText, copyToClipboard) = useCopyToClipboard()
+
     React.useEffect1(() => {
       switch canvasRef.current {
       | Value(canvasDom) => {
           let canvas = canvasDom->Obj.magic
           let context = canvas->Draw.Canvas.getContext("2d")
-          context->Draw.Canvas.scale(
-            divWidth->Int.toFloat /. width->Int.toFloat,
-            divHeight->Int.toFloat /. height->Int.toFloat,
-          )
+          context->Draw.Canvas.scale(1. /. dpr, 1. /. dpr)
 
-          canvas->Draw.Canvas.setWidth(width)
-          canvas->Draw.Canvas.setHeight(height)
+          canvas->Draw.Canvas.setWidth((width->Int.toFloat *. dpr)->Float.toInt)
+          canvas->Draw.Canvas.setHeight((height->Int.toFloat *. dpr)->Float.toInt)
 
           // let worker = newWorker()
           // worker->postMessage({"width": width, "height": height})
@@ -50,21 +48,18 @@ module CanvasArea = {
       onClick={_ => copyToClipboard(seed->Float.toString)}
       title={"seed:" ++ seed->Float.toString}
       className="bg-white w-fit h-fit">
-      // <React.Suspense fallback={<div> {"Loading"->React.string} </div>}>
-
       <canvas
         style={{
-          width: divWidth->Int.toString ++ "px",
-          height: divHeight->Int.toString ++ "px",
+          width: width->Int.toString ++ "px",
+          height: height->Int.toString ++ "px",
         }}
         ref={ReactDOM.Ref.domRef(canvasRef)}
       />
-      // </React.Suspense>
     </div>
   }
 }
 
-let numSplatters = 10
+let numSplatters = 8
 @react.component
 let make = () => {
   let (canvases, setCanvases) = React.useState(_ => [])
@@ -78,7 +73,7 @@ let make = () => {
       <CanvasArea
         key={seed->Float.toString}
         // seed={i->Int.toFloat}
-        seed={seed}
+        seed={seed *. dpr}
         isLoaded={() => setLoaded(a => a->Array.mapWithIndex((v, vi) => i == vi ? true : v))}
       />
     })

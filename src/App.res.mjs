@@ -7,10 +7,6 @@ import * as Core__Array from "@rescript/core/src/Core__Array.res.mjs";
 import * as JsxRuntime from "react/jsx-runtime";
 import * as Usehooks from "@uidotdev/usehooks";
 
-var width = 600;
-
-var height = 600;
-
 function App$CanvasArea(props) {
   var seed = props.seed;
   var isLoaded = props.isLoaded;
@@ -23,9 +19,9 @@ function App$CanvasArea(props) {
             canvasDom === null;
           } else {
             var context = canvasDom.getContext("2d");
-            context.scale(300 / width, 300 / height);
-            canvasDom.width = width;
-            canvasDom.height = height;
+            context.scale(1 / window.devicePixelRatio, 1 / window.devicePixelRatio);
+            canvasDom.width = 300 * window.devicePixelRatio | 0;
+            canvasDom.height = 300 * window.devicePixelRatio | 0;
             Draw.updateCanvas(canvasDom, context, seed);
             isLoaded();
           }
@@ -56,11 +52,11 @@ function App(props) {
       });
   var setMounted = match$1[1];
   var match$2 = React.useState(function () {
-        return Core__Array.make(10, false);
+        return Core__Array.make(8, false);
       });
   var setLoaded = match$2[1];
   React.useEffect((function () {
-          var canvases = Core__Array.make(10, false).map(function (param, i) {
+          var canvases = Core__Array.make(8, false).map(function (param, i) {
                 var seed = Math.random();
                 return JsxRuntime.jsx(App$CanvasArea, {
                             isLoaded: (function () {
@@ -74,7 +70,7 @@ function App(props) {
                                                 });
                                     });
                               }),
-                            seed: seed
+                            seed: seed * window.devicePixelRatio
                           }, seed.toString());
               });
           setCanvases(function (param) {
