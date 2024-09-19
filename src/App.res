@@ -52,7 +52,7 @@ module CanvasArea = {
   }
 }
 
-let numSplatters = 20
+let numSplatters = 40
 @react.component
 let make = () => {
   let (canvases, setCanvases) = React.useState(_ => [])
@@ -61,13 +61,13 @@ let make = () => {
   let (loaded, setLoaded) = React.useState(_ => Array.make(~length=numSplatters, false))
 
   React.useEffect(() => {
-    let canvases =
-      Array.make(~length=numSplatters, false)->Array.mapWithIndex((_, i) =>
-        <CanvasArea
-          seed={i->Int.toFloat}
-          isLoaded={() => setLoaded(a => a->Array.mapWithIndex((v, vi) => i == vi ? true : v))}
-        />
-      )
+    let canvases = Array.make(~length=numSplatters, false)->Array.mapWithIndex((_, i) =>
+      <CanvasArea
+        // seed={i->Int.toFloat}
+        seed={Math.random()}
+        isLoaded={() => setLoaded(a => a->Array.mapWithIndex((v, vi) => i == vi ? true : v))}
+      />
+    )
     setCanvases(_ => canvases)
     let timeoutId = setTimeout(() => {
       setMounted(_ => true)
