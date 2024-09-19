@@ -64,7 +64,7 @@ function App(props) {
                                                 });
                                     });
                               }),
-                            seed: Math.random()
+                            seed: i
                           });
               });
           setCanvases(function (param) {

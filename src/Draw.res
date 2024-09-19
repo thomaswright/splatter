@@ -81,16 +81,27 @@ let randomBySample = (sample, a, b) => {
   sample *. (b -. a) +. a
 }
 
+let makeCachedRng = (rng, len) => {
+  let cachedRng = Array.make(~length=len, false)->Array.map(_ => rng())
+  let index = ref(0)
+  () => {
+    index := mod(index.contents + 1, len)
+    cachedRng->Array.getUnsafe(index.contents)
+  }
+}
+
 let updateCanvas = (canvas, ctx, seed) => {
   let rng = Rng.makeSeeded(seed)
-  Jstat.setRandom(rng)
+  let cachedRng = makeCachedRng(rng, 1000)
+
+  Jstat.setRandom(cachedRng)
 
   let random = (a, b) => {
-    rng() *. (b -. a) +. a
+    cachedRng() *. (b -. a) +. a
   }
 
   let randomInt = (a, b) => {
-    (rng() *. (b->Int.toFloat -. a->Int.toFloat) +. a->Int.toFloat)->Float.toInt
+    (cachedRng() *. (b->Int.toFloat -. a->Int.toFloat) +. a->Int.toFloat)->Float.toInt
   }
 
   let makeRandomWindowInt = (a, b) => {

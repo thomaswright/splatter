@@ -64,7 +64,7 @@ let make = () => {
     let canvases =
       Array.make(~length=numSplatters, false)->Array.mapWithIndex((_, i) =>
         <CanvasArea
-          seed={Math.random()}
+          seed={i->Int.toFloat}
           isLoaded={() => setLoaded(a => a->Array.mapWithIndex((v, vi) => i == vi ? true : v))}
         />
       )
