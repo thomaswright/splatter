@@ -20,7 +20,7 @@ module Canvas = {
 
   @new external newOffscreenCanvas: (int, int) => canvas = "OffscreenCanvas"
   @send external transferToImageBitmap: canvas => 'bitmap = "transferToImageBitmap"
-  @send external drawImage: (context, 'bitmap, int, int) => unit = "drawImage"
+  @send external drawImage: (context, canvas, int, int, int, int) => unit = "drawImage"
   @send
   external fillRect: (context, ~x: int, ~y: int, ~w: int, ~h: int) => unit = "fillRect"
   @send

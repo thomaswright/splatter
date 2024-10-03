@@ -1,21 +1,15 @@
-type worker
-
-@set external _onmessage: (worker, 'event => unit) => unit = "onmessage"
-@send external _postMessage: (worker, 'message) => unit = "postMessage"
-@module("./Worker.res.mjs?worker") external newWorker: unit => worker = "default"
-@module("@uidotdev/usehooks")
-external useCopyToClipboard: unit => (string, string => unit) = "useCopyToClipboard"
-
 @val @scope("window")
 external dpr: float = "devicePixelRatio"
+
 let width = 300
 let height = 300
+
+@module("./downloadPng.js") external downloadPng: (Dom.element, string) => unit = "default"
 
 module CanvasArea = {
   @react.component
   let make = (~isLoaded, ~seed) => {
     let canvasRef = React.useRef(Nullable.null)
-    let (_copiedText, copyToClipboard) = useCopyToClipboard()
 
     React.useEffect1(() => {
       switch canvasRef.current {
@@ -27,14 +21,6 @@ module CanvasArea = {
           canvas->Draw.Canvas.setWidth((width->Int.toFloat *. dpr)->Float.toInt)
           canvas->Draw.Canvas.setHeight((height->Int.toFloat *. dpr)->Float.toInt)
 
-          // let worker = newWorker()
-          // worker->postMessage({"width": width, "height": height})
-          // worker->onmessage(event => {
-          //   if event["data"]["success"] {
-          //     context->Draw.Canvas.drawImage(event["data"]["imageBitmap"], 0, 0)
-          //   }
-          // })
-
           Draw.updateCanvas(canvas, context, seed)
           isLoaded()
         }
@@ -45,7 +31,9 @@ module CanvasArea = {
     }, [canvasRef.current])
 
     <div
-      onClick={_ => copyToClipboard(seed->Float.toString)}
+      onClick={_ => {
+        downloadPng(canvasRef.current->Obj.magic, seed->Float.toString)
+      }}
       title={"seed:" ++ seed->Float.toString}
       className="bg-white w-fit h-fit">
       <canvas

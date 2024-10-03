@@ -4,15 +4,13 @@ import * as Draw from "./Draw.res.mjs";
 import * as React from "react";
 import * as Caml_option from "rescript/lib/es6/caml_option.js";
 import * as Core__Array from "@rescript/core/src/Core__Array.res.mjs";
+import DownloadPngJs from "./downloadPng.js";
 import * as JsxRuntime from "react/jsx-runtime";
-import * as Usehooks from "@uidotdev/usehooks";
 
 function App$CanvasArea(props) {
   var seed = props.seed;
   var isLoaded = props.isLoaded;
   var canvasRef = React.useRef(null);
-  var match = Usehooks.useCopyToClipboard();
-  var copyToClipboard = match[1];
   React.useEffect((function () {
           var canvasDom = canvasRef.current;
           if (canvasDom === null || canvasDom === undefined) {
@@ -37,7 +35,8 @@ function App$CanvasArea(props) {
               className: "bg-white w-fit h-fit",
               title: "seed:" + seed.toString(),
               onClick: (function (param) {
-                  copyToClipboard(seed.toString());
+                  var prim1 = seed.toString();
+                  DownloadPngJs(canvasRef.current, prim1);
                 })
             });
 }
