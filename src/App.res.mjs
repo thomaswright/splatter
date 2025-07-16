@@ -90,7 +90,7 @@ function App(props) {
                       children: [
                         JsxRuntime.jsx("div", {
                               children: "Splatter",
-                              className: "font-black uppercase text-5xl mb-4 w-fit px-8 py-4",
+                              className: "font-black uppercase text-2xl mb-4 w-fit px-8",
                               style: {
                                 letterSpacing: "0.2em"
                               }
@@ -107,7 +107,7 @@ function App(props) {
                               className: "uppercase text-sm text-gray-100"
                             })
                       ],
-                      className: "flex flex-col items-center justify-center text-gray-100 py-8 "
+                      className: "flex flex-col items-center justify-center text-gray-100 py-4 "
                     }),
                 match$2[0].every(function (v) {
                       return v;

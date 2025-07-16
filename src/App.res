@@ -74,10 +74,9 @@ let make = () => {
   }, [])
 
   <div className="p-6 bg-black min-h-screen ">
-    <div className="flex flex-col items-center justify-center text-gray-100 py-8 ">
+    <div className="flex flex-col items-center justify-center text-gray-100 py-4 ">
       <div
-        className="font-black uppercase text-5xl mb-4 w-fit px-8 py-4"
-        style={{letterSpacing: "0.2em"}}>
+        className="font-black uppercase text-2xl mb-4 w-fit px-8" style={{letterSpacing: "0.2em"}}>
         {"Splatter"->React.string}
       </div>
       <div className="uppercase text-sm text-gray-100">
