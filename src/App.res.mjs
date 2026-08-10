@@ -123,8 +123,11 @@ function App(props) {
                 match$3[0].every(function (v) {
                       return v;
                     }) ? null : JsxRuntime.jsx("div", {
-                        children: "Generating...",
-                        className: "text-white text-center text-thin animate-pulse "
+                        children: JsxRuntime.jsx("div", {
+                              children: "Generating...",
+                              className: "text-white text-center text-thin animate-pulse"
+                            }),
+                        className: "fixed inset-0 z-10 flex items-center justify-center pointer-events-none"
                       }),
                 JsxRuntime.jsx("div", {
                       children: match$2[0] ? canvases : null,

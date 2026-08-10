@@ -94,8 +94,10 @@ let make = () => {
     </div>
     {loaded->Array.every(v => v)
       ? React.null
-      : <div className="text-white text-center text-thin animate-pulse ">
-          {"Generating..."->React.string}
+      : <div className="fixed inset-0 z-10 flex items-center justify-center pointer-events-none">
+          <div className="text-white text-center text-thin animate-pulse">
+            {"Generating..."->React.string}
+          </div>
         </div>}
     <div className="flex flex-row flex-wrap gap-8 justify-center py-8">
       {!mounted ? React.null : canvases->React.array}
