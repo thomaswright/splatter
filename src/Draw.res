@@ -25,6 +25,7 @@ module Canvas = {
   external fillRect: (context, ~x: int, ~y: int, ~w: int, ~h: int) => unit = "fillRect"
   @send
   external arc: (context, ~x: int, ~y: int, ~r: int, ~start: float, ~end: float) => unit = "arc"
+  @send external moveTo: (context, ~x: int, ~y: int) => unit = "moveTo"
   @set external setFillStyle: (context, string) => unit = "fillStyle"
   @send external fill: context => unit = "fill"
   @send external beginPath: context => unit = "beginPath"
@@ -36,12 +37,6 @@ module Canvas = {
   @set external setHeight: (canvas, int) => unit = "height"
   @send external getContext: (canvas, string) => context = "getContext"
   @send external clearRect: (context, ~x: int, ~y: int, ~w: int, ~h: int) => unit = "clearRect"
-}
-
-module Jstat = {
-  @module("jstat") @scope("beta") external betaSample: (float, float) => float = "sample"
-  @module("jstat") @scope("normal") external normalSample: (float, float) => float = "sample"
-  @module("jstat") external setRandom: (unit => float) => unit = "setRandom"
 }
 
 // let rgb = Texel.convert(
@@ -95,7 +90,65 @@ let updateCanvas = (canvas, ctx, seed) => {
   let rng = Rng.makeSeeded(seed)
   let cachedRng = makeCachedRng(rng, 50000)
 
-  Jstat.setRandom(cachedRng)
+  // These are the same ratio-of-uniforms normal sampler and Marsaglia-Tsang gamma
+  // sampler used by jStat. Keeping them local avoids millions of calls through jStat's
+  // generic distribution API while preserving its formulas and random-number order.
+  let rec normalSample = () => {
+    let u = cachedRng()
+    let v = 1.7156 *. (cachedRng() -. 0.5)
+    let x = u -. 0.449871
+    let y = Math.abs(v) +. 0.386595
+    let q = x *. x +. y *. (0.196 *. y -. 0.25472 *. x)
+
+    if q > 0.27597 && (q > 0.27846 || v *. v > -4. *. Math.log(u) *. u *. u) {
+      normalSample()
+    } else {
+      v /. u
+    }
+  }
+
+  let gammaSample = shape => {
+    let normalizedShape = shape < 1. ? shape +. 1. : shape
+    let a1 = normalizedShape -. 1. /. 3.
+    let a2 = 1. /. Math.sqrt(9. *. a1)
+
+    let rec positiveV = () => {
+      let x = normalSample()
+      let v = 1. +. a2 *. x
+      v <= 0. ? positiveV() : (x, v)
+    }
+
+    let rec acceptedV = () => {
+      let (x, vBase) = positiveV()
+      let v = vBase *. vBase *. vBase
+      let u = cachedRng()
+
+      if
+        u > 1. -. 0.331 *. Math.pow(x, ~exp=4.) &&
+        Math.log(u) > 0.5 *. x *. x +. a1 *. (1. -. v +. Math.log(v))
+      {
+        acceptedV()
+      } else {
+        v
+      }
+    }
+
+    let v = acceptedV()
+    if normalizedShape == shape {
+      a1 *. v
+    } else {
+      let rec nonzeroRandom = () => {
+        let u = cachedRng()
+        u == 0. ? nonzeroRandom() : u
+      }
+      Math.pow(nonzeroRandom(), ~exp=1. /. shape) *. a1 *. v
+    }
+  }
+
+  let betaSample = (alpha, beta) => {
+    let u = gammaSample(alpha)
+    u /. (u +. gammaSample(beta))
+  }
 
   let random = (a, b) => {
     cachedRng() *. (b -. a) +. a
@@ -133,7 +186,7 @@ let updateCanvas = (canvas, ctx, seed) => {
     let endHueLength = random(0., 360.)
 
     let getHue = () => {
-      Float.mod(randomBySample(Jstat.betaSample(1.4, 5.), startHue, startHue +. endHueLength), 360.)
+      Float.mod(randomBySample(betaSample(1.4, 5.), startHue, startHue +. endHueLength), 360.)
     }
     // let getValue = makeRandomWindow(0.0, 1.0)
     let valueFloor = random(0.2, 0.7)
@@ -151,7 +204,11 @@ let updateCanvas = (canvas, ctx, seed) => {
 
     for _ in 0 to numSplats {
       let color = Texel.convert((getHue(), 1.0, random(valueFloor, 1.0)), Texel.okhsv, Texel.srgb)
+      ctx->Canvas.setFillStyle(Texel.rgbToHex(color))
+
       let angle = random(startAngle, endAngle) *. 2. *. Js.Math._PI
+      let cosAngle = Math.cos(angle)
+      let sinAngle = Math.sin(angle)
       let xAlpha = random(2.0, 3.0)
       let yStd = random(0.1, 0.4)
 
@@ -161,24 +218,40 @@ let updateCanvas = (canvas, ctx, seed) => {
       let xSizeScaler = random(0.0, 2.0)
       let ySizeScaler = random(0.0, 0.2)
       let numDrops = (numDropWindow()->Int.toFloat *. sizeNumScaler)->Float.toInt
+      let hasVisibleDrop = ref(false)
 
       for _ in 0 to numDrops {
-        let originalx = Jstat.betaSample(xAlpha, 5.) *. size->Int.toFloat *. xSizeScaler
-        let originaly = Jstat.normalSample(0., yStd) *. size->Int.toFloat *. ySizeScaler
+        let originalx = betaSample(xAlpha, 5.) *. size->Int.toFloat *. xSizeScaler
+        let originaly = normalSample() *. yStd *. size->Int.toFloat *. ySizeScaler
 
-        let (x, y) = rotatePoint(originalx, originaly, angle)
+        let x = originalx *. cosAngle -. originaly *. sinAngle
+        let y = originalx *. sinAngle +. originaly *. cosAngle
 
-        let radius = (Jstat.betaSample(1.4, 5.) *. radiusBase)->Float.toInt
+        let radius = (betaSample(1.4, 5.) *. radiusBase)->Float.toInt
 
-        ctx->Canvas.setFillStyle(Texel.rgbToHex(color))
-        ctx->Canvas.beginPath
-        ctx->Canvas.arc(
-          ~x=x->Float.toInt + xOffset,
-          ~y=y->Float.toInt + yOffset,
-          ~r=radius,
-          ~start=0.,
-          ~end=2. *. Js.Math._PI,
-        )
+        if radius > 0 {
+          let circleX = x->Float.toInt + xOffset
+          let circleY = y->Float.toInt + yOffset
+
+          if !hasVisibleDrop.contents {
+            ctx->Canvas.beginPath
+            hasVisibleDrop := true
+          }
+
+          // moveTo keeps each circle as an independent subpath. Without it, arc would connect
+          // consecutive drops with straight lines when they are batched into one path.
+          ctx->Canvas.moveTo(~x=circleX + radius, ~y=circleY)
+          ctx->Canvas.arc(
+            ~x=circleX,
+            ~y=circleY,
+            ~r=radius,
+            ~start=0.,
+            ~end=2. *. Js.Math._PI,
+          )
+        }
+      }
+
+      if hasVisibleDrop.contents {
         ctx->Canvas.fill
       }
     }
@@ -201,7 +274,7 @@ let updateCanvas = (canvas, ctx, seed) => {
   let sizeNumScaler =
     1.0 *. random(size->Int.toFloat /. 300. *. 0.5, size->Int.toFloat /. 300. *. 1.5)
 
-  let dynamicRadiusBase = () => Jstat.betaSample(2.5, 17.) *. random(10., 100.) *. radiusScale
+  let dynamicRadiusBase = () => betaSample(2.5, 17.) *. random(10., 100.) *. radiusScale
 
   let makeRadiusBase = rng() > 0.5 ? () => dynamicRadiusBase() : () => dynamicRadiusBase()
 
