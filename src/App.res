@@ -1,17 +1,20 @@
 @val @scope("window")
 external dpr: float = "devicePixelRatio"
 
-let width = 1200
-let height = 600
+type viewport = {width: int, height: int}
+
+@module("./other.js") external getViewportSize: unit => viewport = "getViewportSize"
+@module("./other.js")
+external observeViewport: (viewport => unit) => unit => unit = "observeViewport"
 
 @module("./downloadPng.js") external downloadPng: (Dom.element, string) => unit = "default"
 
 module CanvasArea = {
   @react.component
-  let make = (~isLoaded, ~seed) => {
+  let make = (~isLoaded, ~seed, ~width, ~height) => {
     let canvasRef = React.useRef(Nullable.null)
 
-    React.useEffect1(() => {
+    React.useEffect4(() => {
       switch canvasRef.current {
       | Value(canvasDom) => {
           let canvas = canvasDom->Obj.magic
@@ -25,7 +28,7 @@ module CanvasArea = {
       }
 
       None
-    }, [canvasRef.current])
+    }, (canvasRef.current, seed, width, height))
 
     <div
       onClick={_ => {
@@ -47,28 +50,41 @@ module CanvasArea = {
 let numSplatters = 8
 @react.component
 let make = () => {
-  let (canvases, setCanvases) = React.useState(_ => [])
+  let (viewport, setViewport) = React.useState(() => getViewportSize())
+  let (seeds, _) = React.useState(() =>
+    Array.make(~length=numSplatters, false)->Array.map(_ => Math.random() *. dpr)
+  )
   let (mounted, setMounted) = React.useState(_ => false)
 
   let (loaded, setLoaded) = React.useState(_ => Array.make(~length=numSplatters, false))
 
+  let canvasWidth = (viewport.width->Int.toFloat *. 0.8)->Float.toInt
+  let canvasHeight = (viewport.height->Int.toFloat *. 0.75)->Float.toInt
+
   React.useEffect(() => {
-    let canvases = Array.make(~length=numSplatters, false)->Array.mapWithIndex((_, i) => {
-      let seed = Math.random()
-      <CanvasArea
-        key={seed->Float.toString}
-        // seed={i->Int.toFloat}
-        seed={seed *. dpr}
-        isLoaded={() => setLoaded(a => a->Array.mapWithIndex((v, vi) => i == vi ? true : v))}
-      />
-    })
-    setCanvases(_ => canvases)
+    let stopObserving = observeViewport(nextViewport => setViewport(_ => nextViewport))
     let timeoutId = setTimeout(() => {
       setMounted(_ => true)
     }, 10)
 
-    Some(() => clearTimeout(timeoutId))
+    Some(
+      () => {
+        clearTimeout(timeoutId)
+        stopObserving()
+      },
+    )
   }, [])
+
+  let canvases =
+    seeds->Array.mapWithIndex((seed, i) =>
+      <CanvasArea
+        key={seed->Float.toString}
+        seed
+        width={canvasWidth}
+        height={canvasHeight}
+        isLoaded={() => setLoaded(a => a->Array.mapWithIndex((v, vi) => i == vi ? true : v))}
+      />
+    )
 
   <div className="p-6 bg-black min-h-screen ">
     <div className="flex flex-col items-center justify-center text-gray-100 py-4 ">

@@ -2,12 +2,15 @@
 
 import * as Draw from "./Draw.res.mjs";
 import * as React from "react";
+import * as OtherJs from "./other.js";
 import * as Caml_option from "rescript/lib/es6/caml_option.js";
 import * as Core__Array from "@rescript/core/src/Core__Array.res.mjs";
 import DownloadPngJs from "./downloadPng.js";
 import * as JsxRuntime from "react/jsx-runtime";
 
 function App$CanvasArea(props) {
+  var height = props.height;
+  var width = props.width;
   var seed = props.seed;
   var isLoaded = props.isLoaded;
   var canvasRef = React.useRef(null);
@@ -16,18 +19,23 @@ function App$CanvasArea(props) {
           if (canvasDom === null || canvasDom === undefined) {
             canvasDom === null;
           } else {
-            canvasDom.width = 1200 * window.devicePixelRatio | 0;
-            canvasDom.height = 600 * window.devicePixelRatio | 0;
+            canvasDom.width = width * window.devicePixelRatio | 0;
+            canvasDom.height = height * window.devicePixelRatio | 0;
             Draw.updateCanvas(canvasDom, seed);
             isLoaded();
           }
-        }), [canvasRef.current]);
+        }), [
+        canvasRef.current,
+        seed,
+        width,
+        height
+      ]);
   return JsxRuntime.jsx("div", {
               children: JsxRuntime.jsx("canvas", {
                     ref: Caml_option.some(canvasRef),
                     style: {
-                      height: (600).toString() + "px",
-                      width: (1200).toString() + "px"
+                      height: height.toString() + "px",
+                      width: width.toString() + "px"
                     }
                   }),
               className: "bg-white w-fit h-fit",
@@ -41,37 +49,30 @@ function App$CanvasArea(props) {
 
 function App(props) {
   var match = React.useState(function () {
-        return [];
+        return OtherJs.getViewportSize();
       });
-  var setCanvases = match[1];
+  var setViewport = match[1];
+  var viewport = match[0];
   var match$1 = React.useState(function () {
+        return Core__Array.make(8, false).map(function (param) {
+                    return Math.random() * window.devicePixelRatio;
+                  });
+      });
+  var match$2 = React.useState(function () {
         return false;
       });
-  var setMounted = match$1[1];
-  var match$2 = React.useState(function () {
+  var setMounted = match$2[1];
+  var match$3 = React.useState(function () {
         return Core__Array.make(8, false);
       });
-  var setLoaded = match$2[1];
+  var setLoaded = match$3[1];
+  var canvasWidth = viewport.width * 0.8 | 0;
+  var canvasHeight = viewport.height * 0.75 | 0;
   React.useEffect((function () {
-          var canvases = Core__Array.make(8, false).map(function (param, i) {
-                var seed = Math.random();
-                return JsxRuntime.jsx(App$CanvasArea, {
-                            isLoaded: (function () {
-                                setLoaded(function (a) {
-                                      return a.map(function (v, vi) {
-                                                  if (i === vi) {
-                                                    return true;
-                                                  } else {
-                                                    return v;
-                                                  }
-                                                });
-                                    });
-                              }),
-                            seed: seed * window.devicePixelRatio
-                          }, seed.toString());
-              });
-          setCanvases(function (param) {
-                return canvases;
+          var stopObserving = OtherJs.observeViewport(function (nextViewport) {
+                setViewport(function (param) {
+                      return nextViewport;
+                    });
               });
           var timeoutId = setTimeout((function () {
                   setMounted(function (param) {
@@ -80,8 +81,27 @@ function App(props) {
                 }), 10);
           return (function () {
                     clearTimeout(timeoutId);
+                    stopObserving();
                   });
         }), []);
+  var canvases = match$1[0].map(function (seed, i) {
+        return JsxRuntime.jsx(App$CanvasArea, {
+                    isLoaded: (function () {
+                        setLoaded(function (a) {
+                              return a.map(function (v, vi) {
+                                          if (i === vi) {
+                                            return true;
+                                          } else {
+                                            return v;
+                                          }
+                                        });
+                            });
+                      }),
+                    seed: seed,
+                    width: canvasWidth,
+                    height: canvasHeight
+                  }, seed.toString());
+      });
   return JsxRuntime.jsxs("div", {
               children: [
                 JsxRuntime.jsxs("div", {
@@ -107,14 +127,14 @@ function App(props) {
                       ],
                       className: "flex flex-col items-center justify-center text-gray-100 py-4 "
                     }),
-                match$2[0].every(function (v) {
+                match$3[0].every(function (v) {
                       return v;
                     }) ? null : JsxRuntime.jsx("div", {
                         children: "Generating...",
                         className: "text-white text-center text-thin animate-pulse "
                       }),
                 JsxRuntime.jsx("div", {
-                      children: match$1[0] ? match[0] : null,
+                      children: match$2[0] ? canvases : null,
                       className: "flex flex-row flex-wrap gap-8 justify-center py-8"
                     })
               ],

@@ -10,6 +10,27 @@ export function makeSeededRng(seed) {
   }
 }
 
+export function getViewportSize() {
+  return {
+    width: Math.max(1, Math.floor(window.innerWidth)),
+    height: Math.max(1, Math.floor(window.innerHeight)),
+  }
+}
+
+export function observeViewport(callback) {
+  let timeoutId
+  const handleResize = () => {
+    clearTimeout(timeoutId)
+    timeoutId = setTimeout(() => callback(getViewportSize()), 150)
+  }
+
+  window.addEventListener("resize", handleResize)
+  return () => {
+    clearTimeout(timeoutId)
+    window.removeEventListener("resize", handleResize)
+  }
+}
+
 const vertexShaderSource = `#version 300 es
 precision highp float;
 
