@@ -46,133 +46,166 @@ module Canvas = {
 //     )
 
 module Rng = {
-  let m = 0x80000000->Int.toFloat // 2^31
-  let a = 1103515245.
-  let c = 12345.
-
-  let makeSeeded = seed => {
-    let state = ref(seed)
-    // let count = ref(0)
-
-    () => {
-      // Console.log(count.contents)
-      // count := count.contents + 1
-      state := Float.mod(a *. state.contents +. c, m)
-      -1. *. state.contents /. m
-    }
-  }
-}
-
-let rotatePoint = (x, y, angle) => {
-  let cosTheta = Math.cos(angle)
-  let sinTheta = Math.sin(angle)
-
-  let xNew = x *. cosTheta -. y *. sinTheta
-  let yNew = x *. sinTheta +. y *. cosTheta
-
-  (xNew, yNew)
+  @module("./other.js") external makeSeeded: float => unit => float = "makeSeededRng"
 }
 
 let randomBySample = (sample, a, b) => {
   sample *. (b -. a) +. a
 }
 
-let makeCachedRng = (rng, len) => {
-  let cachedRng = Array.make(~length=len, false)->Array.map(_ => rng())
-  let index = ref(0)
-  () => {
-    index := mod(index.contents + 1, len)
-    cachedRng->Array.getUnsafe(index.contents)
+module Sampling = {
+  // Exact samplers are used only once to construct deterministic quantile tables.
+  // Rendering uses the much cheaper table lookups below.
+  let makeNormalSampler = rng => {
+    let rec sample = () => {
+      let u = rng()
+      let v = 1.7156 *. (rng() -. 0.5)
+      let x = u -. 0.449871
+      let y = Math.abs(v) +. 0.386595
+      let q = x *. x +. y *. (0.196 *. y -. 0.25472 *. x)
+
+      if q > 0.27597 && (q > 0.27846 || v *. v > -4. *. Math.log(u) *. u *. u) {
+        sample()
+      } else {
+        v /. u
+      }
+    }
+    sample
+  }
+
+  let makeGammaSampler = (rng, normalSample) => {
+    let sample = shape => {
+      let normalizedShape = shape < 1. ? shape +. 1. : shape
+      let a1 = normalizedShape -. 1. /. 3.
+      let a2 = 1. /. Math.sqrt(9. *. a1)
+
+      let rec positiveV = () => {
+        let x = normalSample()
+        let v = 1. +. a2 *. x
+        v <= 0. ? positiveV() : (x, v)
+      }
+
+      let rec acceptedV = () => {
+        let (x, vBase) = positiveV()
+        let v = vBase *. vBase *. vBase
+        let u = rng()
+
+        if
+          u > 1. -. 0.331 *. Math.pow(x, ~exp=4.) &&
+          Math.log(u) > 0.5 *. x *. x +. a1 *. (1. -. v +. Math.log(v))
+        {
+          acceptedV()
+        } else {
+          v
+        }
+      }
+
+      let v = acceptedV()
+      if normalizedShape == shape {
+        a1 *. v
+      } else {
+        let rec nonzeroRandom = () => {
+          let u = rng()
+          u == 0. ? nonzeroRandom() : u
+        }
+        Math.pow(nonzeroRandom(), ~exp=1. /. shape) *. a1 *. v
+      }
+    }
+    sample
+  }
+
+  let tableSize = 2048
+  let trainingFactor = 4
+
+  let makeQuantileTable = (~size=tableSize, ~training=trainingFactor, sample) => {
+    let trainingSize = size * training
+    let sorted = Array.make(~length=trainingSize, false)->Array.map(_ => sample())->Array.toSorted(
+      (a, b) => a -. b,
+    )
+
+    Array.make(~length=size, false)->Array.mapWithIndex((_, i) => {
+      let sourceIndex = i * (trainingSize - 1) / (size - 1)
+      sorted->Array.getUnsafe(sourceIndex)
+    })
+  }
+
+  let sampleTable = (table, quantile) => {
+    let lastIndex = table->Array.length - 1
+    let scaledIndex = quantile *. lastIndex->Int.toFloat
+    let lowerIndex = scaledIndex->Float.toInt
+    let upperIndex = lowerIndex < lastIndex ? lowerIndex + 1 : lowerIndex
+    let fraction = scaledIndex -. lowerIndex->Int.toFloat
+    let lower = table->Array.getUnsafe(lowerIndex)
+    let upper = table->Array.getUnsafe(upperIndex)
+    lower +. (upper -. lower) *. fraction
+  }
+
+  let tableRng = Rng.makeSeeded(0.314159265)
+  let exactNormal = makeNormalSampler(tableRng)
+  let exactGamma = makeGammaSampler(tableRng, exactNormal)
+  let exactBeta = (alpha, beta) => {
+    let u = exactGamma(alpha)
+    u /. (u +. exactGamma(beta))
+  }
+
+  // Extra training samples retain the rare long normal tails that create stray drops.
+  let rawNormalTable = makeQuantileTable(~training=16, () => exactNormal())
+  let normalTable = rawNormalTable->Array.mapWithIndex((value, i) => {
+    let mirrored = rawNormalTable->Array.getUnsafe(rawNormalTable->Array.length - 1 - i)
+    (value -. mirrored) /. 2.
+  })
+  let beta14x5Table = makeQuantileTable(() => exactBeta(1.4, 5.))
+  let beta25x17Table = makeQuantileTable(() => exactBeta(2.5, 17.))
+
+  let xAlphaMin = 2.
+  let xAlphaMax = 3.
+  let xAlphaTableCount = 17
+  let xAlphaTables =
+    Array.make(~length=xAlphaTableCount, false)->Array.mapWithIndex((_, i) => {
+      let fraction = i->Int.toFloat /. (xAlphaTableCount - 1)->Int.toFloat
+      let alpha = xAlphaMin +. fraction *. (xAlphaMax -. xAlphaMin)
+      makeQuantileTable(~size=1024, () => exactBeta(alpha, 5.))
+    })
+
+  let normal = quantile => sampleTable(normalTable, quantile)
+  let beta14x5 = quantile => sampleTable(beta14x5Table, quantile)
+  let beta25x17 = quantile => sampleTable(beta25x17Table, quantile)
+
+  let betaXAlpha5 = (alpha, quantile) => {
+    let scaledAlpha =
+      (alpha -. xAlphaMin) /. (xAlphaMax -. xAlphaMin) *.
+      (xAlphaTableCount - 1)->Int.toFloat
+    let lowerIndex = scaledAlpha->Float.toInt
+    let lastIndex = xAlphaTableCount - 1
+    let upperIndex = lowerIndex < lastIndex ? lowerIndex + 1 : lowerIndex
+    let fraction = scaledAlpha -. lowerIndex->Int.toFloat
+    let lower = sampleTable(xAlphaTables->Array.getUnsafe(lowerIndex), quantile)
+    let upper = sampleTable(xAlphaTables->Array.getUnsafe(upperIndex), quantile)
+    lower +. (upper -. lower) *. fraction
   }
 }
 
 let updateCanvas = (canvas, ctx, seed) => {
-  let rng = Rng.makeSeeded(seed)
-  let cachedRng = makeCachedRng(rng, 50000)
+  let structureRng = Rng.makeSeeded(seed +. 0.1013904223)
+  let colorRng = Rng.makeSeeded(seed +. 0.3660254038)
+  let geometryRng = Rng.makeSeeded(seed +. 0.6180339887)
+  let radiusRng = Rng.makeSeeded(seed +. 0.7320508076)
 
-  // These are the same ratio-of-uniforms normal sampler and Marsaglia-Tsang gamma
-  // sampler used by jStat. Keeping them local avoids millions of calls through jStat's
-  // generic distribution API while preserving its formulas and random-number order.
-  let rec normalSample = () => {
-    let u = cachedRng()
-    let v = 1.7156 *. (cachedRng() -. 0.5)
-    let x = u -. 0.449871
-    let y = Math.abs(v) +. 0.386595
-    let q = x *. x +. y *. (0.196 *. y -. 0.25472 *. x)
+  let random = (rng, a, b) => rng() *. (b -. a) +. a
 
-    if q > 0.27597 && (q > 0.27846 || v *. v > -4. *. Math.log(u) *. u *. u) {
-      normalSample()
-    } else {
-      v /. u
-    }
+  let randomInt = (rng, a, b) => {
+    (rng() *. (b->Int.toFloat -. a->Int.toFloat) +. a->Int.toFloat)->Float.toInt
   }
 
-  let gammaSample = shape => {
-    let normalizedShape = shape < 1. ? shape +. 1. : shape
-    let a1 = normalizedShape -. 1. /. 3.
-    let a2 = 1. /. Math.sqrt(9. *. a1)
-
-    let rec positiveV = () => {
-      let x = normalSample()
-      let v = 1. +. a2 *. x
-      v <= 0. ? positiveV() : (x, v)
-    }
-
-    let rec acceptedV = () => {
-      let (x, vBase) = positiveV()
-      let v = vBase *. vBase *. vBase
-      let u = cachedRng()
-
-      if
-        u > 1. -. 0.331 *. Math.pow(x, ~exp=4.) &&
-        Math.log(u) > 0.5 *. x *. x +. a1 *. (1. -. v +. Math.log(v))
-      {
-        acceptedV()
-      } else {
-        v
-      }
-    }
-
-    let v = acceptedV()
-    if normalizedShape == shape {
-      a1 *. v
-    } else {
-      let rec nonzeroRandom = () => {
-        let u = cachedRng()
-        u == 0. ? nonzeroRandom() : u
-      }
-      Math.pow(nonzeroRandom(), ~exp=1. /. shape) *. a1 *. v
-    }
-  }
-
-  let betaSample = (alpha, beta) => {
-    let u = gammaSample(alpha)
-    u /. (u +. gammaSample(beta))
-  }
-
-  let random = (a, b) => {
-    cachedRng() *. (b -. a) +. a
-  }
-
-  let randomInt = (a, b) => {
-    (cachedRng() *. (b->Int.toFloat -. a->Int.toFloat) +. a->Int.toFloat)->Float.toInt
-  }
-
-  let makeRandomWindowInt = (a, b) => {
-    let start = randomInt(a, b)
-    let end = randomInt(start, b)
-    () => randomInt(start, end)
-  }
-
-  let _makeRandomWindow = (a, b) => {
-    let start = random(a, b)
-    let end = random(start, b)
-    () => random(start, end)
+  let makeRandomWindowInt = (rng, a, b) => {
+    let start = randomInt(rng, a, b)
+    let end = randomInt(rng, start, b)
+    () => randomInt(rng, start, end)
   }
 
   let rngShuffle = arr =>
     arr
-    ->Array.map(v => (v, rng()))
+    ->Array.map(v => (v, structureRng()))
     ->Array.toSorted(((_, a), (_, b)) => a -. b)
     ->Array.map(((v, _)) => v)
 
@@ -181,55 +214,69 @@ let updateCanvas = (canvas, ctx, seed) => {
   let size = xMax > yMax ? xMax : yMax
 
   let makeSplats = ((minSplats, maxSplats), (minDrops, maxDrops), radiusBase, sizeNumScaler) => {
-    let numSplats = randomInt(minSplats, maxSplats)
-    let startHue = random(0., 360.)
-    let endHueLength = random(0., 360.)
+    let numSplats = randomInt(structureRng, minSplats, maxSplats)
+    let startHue = random(colorRng, 0., 360.)
+    let endHueLength = random(colorRng, 0., 360.)
 
     let getHue = () => {
-      Float.mod(randomBySample(betaSample(1.4, 5.), startHue, startHue +. endHueLength), 360.)
+      Float.mod(
+        randomBySample(Sampling.beta14x5(colorRng()), startHue, startHue +. endHueLength),
+        360.,
+      )
     }
     // let getValue = makeRandomWindow(0.0, 1.0)
-    let valueFloor = random(0.2, 0.7)
+    let valueFloor = random(colorRng, 0.2, 0.7)
     // let saturation = random(0.8, 1.0)
 
-    let middleAngle = random(0., 1.0)
-    let angleWidth = random(0., 0.2)
+    let middleAngle = random(geometryRng, 0., 1.0)
+    let angleWidth = random(geometryRng, 0., 0.2)
     let startAngle = middleAngle -. angleWidth
     let endAngle = middleAngle +. angleWidth
 
-    let numDropWindow = makeRandomWindowInt(minDrops, maxDrops)
+    let numDropWindow = makeRandomWindowInt(structureRng, minDrops, maxDrops)
 
-    let getXOffset = random(0., 1.) < 0.4 ? makeRandomWindowInt(0, xMax) : () => randomInt(0, xMax)
-    let getYOffset = random(0., 1.) < 0.4 ? makeRandomWindowInt(0, yMax) : () => randomInt(0, yMax)
+    let getXOffset =
+      random(geometryRng, 0., 1.) < 0.4
+        ? makeRandomWindowInt(geometryRng, 0, xMax)
+        : () => randomInt(geometryRng, 0, xMax)
+    let getYOffset =
+      random(geometryRng, 0., 1.) < 0.4
+        ? makeRandomWindowInt(geometryRng, 0, yMax)
+        : () => randomInt(geometryRng, 0, yMax)
 
     for _ in 0 to numSplats {
-      let color = Texel.convert((getHue(), 1.0, random(valueFloor, 1.0)), Texel.okhsv, Texel.srgb)
+      let color = Texel.convert(
+        (getHue(), 1.0, random(colorRng, valueFloor, 1.0)),
+        Texel.okhsv,
+        Texel.srgb,
+      )
       ctx->Canvas.setFillStyle(Texel.rgbToHex(color))
 
-      let angle = random(startAngle, endAngle) *. 2. *. Js.Math._PI
+      let angle = random(geometryRng, startAngle, endAngle) *. 2. *. Js.Math._PI
       let cosAngle = Math.cos(angle)
       let sinAngle = Math.sin(angle)
-      let xAlpha = random(2.0, 3.0)
-      let yStd = random(0.1, 0.4)
+      let xAlpha = random(geometryRng, 2.0, 3.0)
+      let yStd = random(geometryRng, 0.1, 0.4)
 
       let xOffset = getXOffset()
       let yOffset = getYOffset()
 
-      let xSizeScaler = random(0.0, 2.0)
-      let ySizeScaler = random(0.0, 0.2)
+      let xSizeScaler = random(geometryRng, 0.0, 2.0)
+      let ySizeScaler = random(geometryRng, 0.0, 0.2)
       let numDrops = (numDropWindow()->Int.toFloat *. sizeNumScaler)->Float.toInt
       let hasVisibleDrop = ref(false)
 
       for _ in 0 to numDrops {
-        let originalx = betaSample(xAlpha, 5.) *. size->Int.toFloat *. xSizeScaler
-        let originaly = normalSample() *. yStd *. size->Int.toFloat *. ySizeScaler
-
-        let x = originalx *. cosAngle -. originaly *. sinAngle
-        let y = originalx *. sinAngle +. originaly *. cosAngle
-
-        let radius = (betaSample(1.4, 5.) *. radiusBase)->Float.toInt
+        let radius = (Sampling.beta14x5(radiusRng()) *. radiusBase)->Float.toInt
 
         if radius > 0 {
+          let originalx =
+            Sampling.betaXAlpha5(xAlpha, geometryRng()) *. size->Int.toFloat *. xSizeScaler
+          let originaly =
+            Sampling.normal(geometryRng()) *. yStd *. size->Int.toFloat *. ySizeScaler
+
+          let x = originalx *. cosAngle -. originaly *. sinAngle
+          let y = originalx *. sinAngle +. originaly *. cosAngle
           let circleX = x->Float.toInt + xOffset
           let circleY = y->Float.toInt + yOffset
 
@@ -258,30 +305,41 @@ let updateCanvas = (canvas, ctx, seed) => {
   }
 
   let getBgL = () => {
-    switch rng() {
-    | x if x < 0.4 => random(0.0, 0.2)
-    | x if x < 0.6 => random(0.2, 0.8)
-    | _ => random(0.8, 1.0)
+    switch structureRng() {
+    | x if x < 0.4 => random(colorRng, 0.0, 0.2)
+    | x if x < 0.6 => random(colorRng, 0.2, 0.8)
+    | _ => random(colorRng, 0.8, 1.0)
     }
   }
 
-  let bgColor = Texel.convert((random(0., 360.), 1.0, getBgL()), Texel.okhsl, Texel.srgb)
+  let bgColor = Texel.convert(
+    (random(colorRng, 0., 360.), 1.0, getBgL()),
+    Texel.okhsl,
+    Texel.srgb,
+  )
 
   ctx->Canvas.setFillStyle(Texel.rgbToHex(bgColor))
   ctx->Canvas.fillRect(~x=0, ~y=0, ~h=yMax, ~w=xMax)
 
   let radiusScale = 2.0
   let sizeNumScaler =
-    1.0 *. random(size->Int.toFloat /. 300. *. 0.5, size->Int.toFloat /. 300. *. 1.5)
+    1.0 *.
+    random(
+      structureRng,
+      size->Int.toFloat /. 300. *. 0.5,
+      size->Int.toFloat /. 300. *. 1.5,
+    )
 
-  let dynamicRadiusBase = () => betaSample(2.5, 17.) *. random(10., 100.) *. radiusScale
+  let dynamicRadiusBase = () =>
+    Sampling.beta25x17(radiusRng()) *. random(radiusRng, 10., 100.) *. radiusScale
 
-  let makeRadiusBase = rng() > 0.5 ? () => dynamicRadiusBase() : () => dynamicRadiusBase()
+  let makeRadiusBase =
+    structureRng() > 0.5 ? () => dynamicRadiusBase() : () => dynamicRadiusBase()
 
   // Console.log(sizeNumScaler)
-  let aSeries = random(0., 1.) > 0.1
-  let bSeries = random(0., 1.) > 0.5
-  let cSeries = random(0., 1.) > 0.2
+  let aSeries = random(structureRng, 0., 1.) > 0.1
+  let bSeries = random(structureRng, 0., 1.) > 0.5
+  let cSeries = random(structureRng, 0., 1.) > 0.2
 
   // Console.log3(aSeries, bSeries, cSeries)
 
@@ -289,21 +347,21 @@ let updateCanvas = (canvas, ctx, seed) => {
     [
       () => {
         aSeries
-          ? Array.make(~length=randomInt(1, 3), false)->Array.forEach(_ => {
+          ? Array.make(~length=randomInt(structureRng, 1, 3), false)->Array.forEach(_ => {
               makeSplats((10, 500), (0, 1000), makeRadiusBase(), sizeNumScaler)
             })
           : ()
       },
       () => {
         bSeries
-          ? Array.make(~length=randomInt(1, 5), false)->Array.forEach(_ => {
+          ? Array.make(~length=randomInt(structureRng, 1, 5), false)->Array.forEach(_ => {
               makeSplats((100, 200), (0, 100), makeRadiusBase(), sizeNumScaler)
             })
           : ()
       },
       () => {
         cSeries || (!aSeries && !bSeries)
-          ? Array.make(~length=randomInt(1, 3), false)->Array.forEach(_ => {
+          ? Array.make(~length=randomInt(structureRng, 1, 3), false)->Array.forEach(_ => {
               makeSplats((10, 20), (0, 100), makeRadiusBase(), sizeNumScaler)
             })
           : ()
@@ -313,14 +371,14 @@ let updateCanvas = (canvas, ctx, seed) => {
     ->Array.forEach(v => v())
 
   let way2 = () =>
-    Array.make(~length=randomInt(1, 50), false)->Array.forEach(_ => {
+    Array.make(~length=randomInt(structureRng, 1, 50), false)->Array.forEach(_ => {
       makeSplats(
-        (randomInt(10, 100), randomInt(20, 500)),
-        (0, randomInt(100, 1000)),
+        (randomInt(structureRng, 10, 100), randomInt(structureRng, 20, 500)),
+        (0, randomInt(structureRng, 100, 1000)),
         makeRadiusBase(),
         sizeNumScaler,
       )
     })
 
-  rng() > 0.2 ? way1() : way2()
+  structureRng() > 0.2 ? way1() : way2()
 }
