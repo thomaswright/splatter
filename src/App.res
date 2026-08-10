@@ -15,13 +15,10 @@ module CanvasArea = {
       switch canvasRef.current {
       | Value(canvasDom) => {
           let canvas = canvasDom->Obj.magic
-          let context = canvas->Draw.Canvas.getContext("2d")
-          context->Draw.Canvas.scale(1. /. dpr, 1. /. dpr)
-
           canvas->Draw.Canvas.setWidth((width->Int.toFloat *. dpr)->Float.toInt)
           canvas->Draw.Canvas.setHeight((height->Int.toFloat *. dpr)->Float.toInt)
 
-          Draw.updateCanvas(canvas, context, seed)
+          Draw.updateCanvas(canvas, seed)
           isLoaded()
         }
       | Null | Undefined => ()

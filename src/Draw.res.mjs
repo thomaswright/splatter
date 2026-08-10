@@ -9,6 +9,14 @@ var Texel = {};
 
 var Canvas = {};
 
+function create(prim) {
+  return OtherJs.createCircleRenderer(prim);
+}
+
+var Renderer = {
+  create: create
+};
+
 function makeSeeded(prim) {
   return OtherJs.makeSeededRng(prim);
 }
@@ -196,7 +204,8 @@ var Sampling = {
   betaXAlpha5: betaXAlpha5
 };
 
-function updateCanvas(canvas, ctx, seed) {
+function updateCanvas(canvas, seed) {
+  var renderer = OtherJs.createCircleRenderer(canvas);
   var structureRng = OtherJs.makeSeededRng(seed + 0.1013904223);
   var colorRng = OtherJs.makeSeededRng(seed + 0.3660254038);
   var geometryRng = OtherJs.makeSeededRng(seed + 0.6180339887);
@@ -254,7 +263,7 @@ function updateCanvas(canvas, ctx, seed) {
             1.0,
             random(colorRng, valueFloor, 1.0)
           ], Color.OKHSV, Color.sRGB);
-      ctx.fillStyle = Color.RGBToHex(color);
+      renderer.setColor(Color.RGBToHex(color));
       var angle = random(geometryRng, startAngle, endAngle) * 2 * Math.PI;
       var cosAngle = Math.cos(angle);
       var sinAngle = Math.sin(angle);
@@ -265,7 +274,6 @@ function updateCanvas(canvas, ctx, seed) {
       var xSizeScaler = random(geometryRng, 0.0, 2.0);
       var ySizeScaler = random(geometryRng, 0.0, 0.2);
       var numDrops = numDropWindow() * sizeNumScaler | 0;
-      var hasVisibleDrop = false;
       for(var _for$1 = 0; _for$1 <= numDrops; ++_for$1){
         var radius = sampleTable(beta14x5Table, radiusRng()) * radiusBase | 0;
         if (radius > 0) {
@@ -275,19 +283,10 @@ function updateCanvas(canvas, ctx, seed) {
           var y = originalx * sinAngle + originaly * cosAngle;
           var circleX = (x | 0) + xOffset | 0;
           var circleY = (y | 0) + yOffset | 0;
-          if (!hasVisibleDrop) {
-            ctx.beginPath();
-            hasVisibleDrop = true;
-          }
-          ctx.moveTo(circleX + radius | 0, circleY);
-          ctx.arc(circleX, circleY, radius, 0, 2 * Math.PI);
+          renderer.circle(circleX, circleY, radius);
         }
 
       }
-      if (hasVisibleDrop) {
-        ctx.fill();
-      }
-
     }
   };
   var getBgL = function () {
@@ -305,8 +304,7 @@ function updateCanvas(canvas, ctx, seed) {
         1.0,
         getBgL()
       ], Color.OKHSL, Color.sRGB);
-  ctx.fillStyle = Color.RGBToHex(bgColor);
-  ctx.fillRect(0, 0, xMax, yMax);
+  renderer.setBackground(Color.RGBToHex(bgColor));
   var sizeNumScaler = 1.0 * random(structureRng, size / 300 * 0.5, size / 300 * 1.5);
   var dynamicRadiusBase = function () {
     return sampleTable(beta25x17Table, radiusRng()) * random(radiusRng, 10, 100) * 2.0;
@@ -382,15 +380,17 @@ function updateCanvas(canvas, ctx, seed) {
         });
   };
   if (structureRng() > 0.2) {
-    return way1();
+    way1();
   } else {
-    return way2();
+    way2();
   }
+  renderer.render();
 }
 
 export {
   Texel ,
   Canvas ,
+  Renderer ,
   Rng ,
   randomBySample ,
   Sampling ,

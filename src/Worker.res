@@ -10,9 +10,8 @@ self->onmessage(event => {
     event["data"]["width"],
     event["data"]["height"],
   )
-  let offscreenContext = offscreenCanvas->Draw.Canvas.getContext("2d")
 
-  Draw.updateCanvas(offscreenCanvas, offscreenContext, 1.0)
+  Draw.updateCanvas(offscreenCanvas, 1.0)
   self->postMessage({
     "success": true,
     "imageBitmap": offscreenCanvas->Draw.Canvas.transferToImageBitmap,

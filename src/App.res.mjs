@@ -16,11 +16,9 @@ function App$CanvasArea(props) {
           if (canvasDom === null || canvasDom === undefined) {
             canvasDom === null;
           } else {
-            var context = canvasDom.getContext("2d");
-            context.scale(1 / window.devicePixelRatio, 1 / window.devicePixelRatio);
             canvasDom.width = 300 * window.devicePixelRatio | 0;
             canvasDom.height = 300 * window.devicePixelRatio | 0;
-            Draw.updateCanvas(canvasDom, context, seed);
+            Draw.updateCanvas(canvasDom, seed);
             isLoaded();
           }
         }), [canvasRef.current]);

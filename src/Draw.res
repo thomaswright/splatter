@@ -16,27 +16,24 @@ module Texel = {
 
 module Canvas = {
   type canvas
-  type context
 
   @new external newOffscreenCanvas: (int, int) => canvas = "OffscreenCanvas"
   @send external transferToImageBitmap: canvas => 'bitmap = "transferToImageBitmap"
-  @send external drawImage: (context, canvas, int, int, int, int) => unit = "drawImage"
-  @send
-  external fillRect: (context, ~x: int, ~y: int, ~w: int, ~h: int) => unit = "fillRect"
-  @send
-  external arc: (context, ~x: int, ~y: int, ~r: int, ~start: float, ~end: float) => unit = "arc"
-  @send external moveTo: (context, ~x: int, ~y: int) => unit = "moveTo"
-  @set external setFillStyle: (context, string) => unit = "fillStyle"
-  @send external fill: context => unit = "fill"
-  @send external beginPath: context => unit = "beginPath"
-  @send external scale: (context, float, float) => unit = "scale"
 
   @get external getWidth: canvas => int = "width"
   @get external getHeight: canvas => int = "height"
   @set external setWidth: (canvas, int) => unit = "width"
   @set external setHeight: (canvas, int) => unit = "height"
-  @send external getContext: (canvas, string) => context = "getContext"
-  @send external clearRect: (context, ~x: int, ~y: int, ~w: int, ~h: int) => unit = "clearRect"
+}
+
+module Renderer = {
+  type t
+
+  @module("./other.js") external create: Canvas.canvas => t = "createCircleRenderer"
+  @send external setBackground: (t, string) => unit = "setBackground"
+  @send external setColor: (t, string) => unit = "setColor"
+  @send external circle: (t, int, int, int) => unit = "circle"
+  @send external render: t => unit = "render"
 }
 
 // let rgb = Texel.convert(
@@ -185,7 +182,8 @@ module Sampling = {
   }
 }
 
-let updateCanvas = (canvas, ctx, seed) => {
+let updateCanvas = (canvas, seed) => {
+  let renderer = Renderer.create(canvas)
   let structureRng = Rng.makeSeeded(seed +. 0.1013904223)
   let colorRng = Rng.makeSeeded(seed +. 0.3660254038)
   let geometryRng = Rng.makeSeeded(seed +. 0.6180339887)
@@ -250,7 +248,7 @@ let updateCanvas = (canvas, ctx, seed) => {
         Texel.okhsv,
         Texel.srgb,
       )
-      ctx->Canvas.setFillStyle(Texel.rgbToHex(color))
+      renderer->Renderer.setColor(Texel.rgbToHex(color))
 
       let angle = random(geometryRng, startAngle, endAngle) *. 2. *. Js.Math._PI
       let cosAngle = Math.cos(angle)
@@ -264,7 +262,6 @@ let updateCanvas = (canvas, ctx, seed) => {
       let xSizeScaler = random(geometryRng, 0.0, 2.0)
       let ySizeScaler = random(geometryRng, 0.0, 0.2)
       let numDrops = (numDropWindow()->Int.toFloat *. sizeNumScaler)->Float.toInt
-      let hasVisibleDrop = ref(false)
 
       for _ in 0 to numDrops {
         let radius = (Sampling.beta14x5(radiusRng()) *. radiusBase)->Float.toInt
@@ -279,27 +276,8 @@ let updateCanvas = (canvas, ctx, seed) => {
           let y = originalx *. sinAngle +. originaly *. cosAngle
           let circleX = x->Float.toInt + xOffset
           let circleY = y->Float.toInt + yOffset
-
-          if !hasVisibleDrop.contents {
-            ctx->Canvas.beginPath
-            hasVisibleDrop := true
-          }
-
-          // moveTo keeps each circle as an independent subpath. Without it, arc would connect
-          // consecutive drops with straight lines when they are batched into one path.
-          ctx->Canvas.moveTo(~x=circleX + radius, ~y=circleY)
-          ctx->Canvas.arc(
-            ~x=circleX,
-            ~y=circleY,
-            ~r=radius,
-            ~start=0.,
-            ~end=2. *. Js.Math._PI,
-          )
+          renderer->Renderer.circle(circleX, circleY, radius)
         }
-      }
-
-      if hasVisibleDrop.contents {
-        ctx->Canvas.fill
       }
     }
   }
@@ -318,8 +296,7 @@ let updateCanvas = (canvas, ctx, seed) => {
     Texel.srgb,
   )
 
-  ctx->Canvas.setFillStyle(Texel.rgbToHex(bgColor))
-  ctx->Canvas.fillRect(~x=0, ~y=0, ~h=yMax, ~w=xMax)
+  renderer->Renderer.setBackground(Texel.rgbToHex(bgColor))
 
   let radiusScale = 2.0
   let sizeNumScaler =
@@ -381,4 +358,5 @@ let updateCanvas = (canvas, ctx, seed) => {
     })
 
   structureRng() > 0.2 ? way1() : way2()
+  renderer->Renderer.render
 }
