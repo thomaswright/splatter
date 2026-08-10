@@ -51,7 +51,6 @@ function App(props) {
   var match = React.useState(function () {
         return OtherJs.getViewportSize();
       });
-  var setViewport = match[1];
   var viewport = match[0];
   var match$1 = React.useState(function () {
         return Core__Array.make(8, false).map(function (param) {
@@ -69,11 +68,6 @@ function App(props) {
   var canvasWidth = viewport.width * 0.8 | 0;
   var canvasHeight = viewport.height * 0.75 | 0;
   React.useEffect((function () {
-          var stopObserving = OtherJs.observeViewport(function (nextViewport) {
-                setViewport(function (param) {
-                      return nextViewport;
-                    });
-              });
           var timeoutId = setTimeout((function () {
                   setMounted(function (param) {
                         return true;
@@ -81,7 +75,6 @@ function App(props) {
                 }), 10);
           return (function () {
                     clearTimeout(timeoutId);
-                    stopObserving();
                   });
         }), []);
   var canvases = match$1[0].map(function (seed, i) {

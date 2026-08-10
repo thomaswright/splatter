@@ -4,8 +4,6 @@ external dpr: float = "devicePixelRatio"
 type viewport = {width: int, height: int}
 
 @module("./other.js") external getViewportSize: unit => viewport = "getViewportSize"
-@module("./other.js")
-external observeViewport: (viewport => unit) => unit => unit = "observeViewport"
 
 @module("./downloadPng.js") external downloadPng: (Dom.element, string) => unit = "default"
 
@@ -50,7 +48,7 @@ module CanvasArea = {
 let numSplatters = 8
 @react.component
 let make = () => {
-  let (viewport, setViewport) = React.useState(() => getViewportSize())
+  let (viewport, _) = React.useState(() => getViewportSize())
   let (seeds, _) = React.useState(() =>
     Array.make(~length=numSplatters, false)->Array.map(_ => Math.random() *. dpr)
   )
@@ -62,17 +60,11 @@ let make = () => {
   let canvasHeight = (viewport.height->Int.toFloat *. 0.75)->Float.toInt
 
   React.useEffect(() => {
-    let stopObserving = observeViewport(nextViewport => setViewport(_ => nextViewport))
     let timeoutId = setTimeout(() => {
       setMounted(_ => true)
     }, 10)
 
-    Some(
-      () => {
-        clearTimeout(timeoutId)
-        stopObserving()
-      },
-    )
+    Some(() => clearTimeout(timeoutId))
   }, [])
 
   let canvases =
