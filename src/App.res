@@ -1,8 +1,8 @@
 @val @scope("window")
 external dpr: float = "devicePixelRatio"
 
-let width = 300
-let height = 300
+let width = 1200
+let height = 600
 
 @module("./downloadPng.js") external downloadPng: (Dom.element, string) => unit = "default"
 

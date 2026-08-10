@@ -16,8 +16,8 @@ function App$CanvasArea(props) {
           if (canvasDom === null || canvasDom === undefined) {
             canvasDom === null;
           } else {
-            canvasDom.width = 300 * window.devicePixelRatio | 0;
-            canvasDom.height = 300 * window.devicePixelRatio | 0;
+            canvasDom.width = 1200 * window.devicePixelRatio | 0;
+            canvasDom.height = 600 * window.devicePixelRatio | 0;
             Draw.updateCanvas(canvasDom, seed);
             isLoaded();
           }
@@ -26,8 +26,8 @@ function App$CanvasArea(props) {
               children: JsxRuntime.jsx("canvas", {
                     ref: Caml_option.some(canvasRef),
                     style: {
-                      height: (300).toString() + "px",
-                      width: (300).toString() + "px"
+                      height: (600).toString() + "px",
+                      width: (1200).toString() + "px"
                     }
                   }),
               className: "bg-white w-fit h-fit",
